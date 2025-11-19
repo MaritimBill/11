@@ -1,0 +1,413 @@
+:root {
+  --primary-blue: #1e40af;
+  --secondary-blue: #2563eb;
+  --accent-blue: #3b82f6;
+  --light-blue: #60a5fa;
+  --dark-blue: #1e3a8a;
+  --card-bg: rgba(37, 99, 235, 0.25);
+  --sidebar-bg: #1e40af;
+  --text-color: #ffffff;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(160deg, #1e3a8a, #1e40af, #2563eb);
+  color: var(--text-color);
+  overflow-x: hidden;
+  animation: bgShift 12s ease-in-out infinite alternate;
+}
+@keyframes bgShift { 
+  0% { background-position: left; }
+  100% { background-position: right; } 
+}
+
+.pem-green { color: #00ff6a; text-shadow: 0 0 10px #00ff6a; }
+
+.sidebar {
+  position: fixed; 
+  width: 220px; 
+  height: 100%;
+  background: var(--sidebar-bg);
+  padding: 20px;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+}
+.sidebar h2 { 
+  text-align: center; 
+  margin-bottom: 30px; 
+  color: var(--text-color);
+}
+.sidebar ul { 
+  list-style: none; 
+  padding: 0; 
+}
+.sidebar ul li {
+  padding: 12px 10px; 
+  cursor: pointer; 
+  border-radius: 6px; 
+  margin-bottom: 10px;
+  display: flex; 
+  align-items: center; 
+  gap: 10px; 
+  transition: background 0.2s, transform 0.2s;
+  color: var(--text-color);
+}
+.sidebar ul li.active, .sidebar ul li:hover {
+  background: var(--secondary-blue); 
+  transform: translateX(3px); 
+  box-shadow: 0 0 10px var(--accent-blue);
+}
+.sidebar ul li i { 
+  width: 20px; 
+  text-align: center; 
+}
+
+.main-content { 
+  margin-left: 240px; 
+  padding: 20px; 
+}
+.page { 
+  display: none; 
+}
+.page.active { 
+  display: block; 
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+.card {
+  background: var(--card-bg);
+  padding: 15px; 
+  border-radius: 8px;
+  text-align: center; 
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s, box-shadow 0.3s;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+}
+.card:hover { 
+  transform: translateY(-5px); 
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4); 
+}
+.card i { 
+  font-size: 30px; 
+  color: var(--accent-blue); 
+  margin-bottom: 10px; 
+}
+.card.wide { 
+  grid-column: span 2; 
+  display: flex; 
+  justify-content: center; 
+  align-items: center; 
+  gap: 20px; 
+}
+
+h1, h3 { 
+  text-transform: uppercase; 
+  color: var(--text-color);
+}
+
+.start-btn, .stop-btn {
+  width: 160px;
+  display: inline-block;
+  margin: 6px 8px;
+  padding: 12px 0;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 10px;
+}
+
+.mode-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+.mode-buttons .mode-btn {
+  width: 130px;
+  padding: 14px 0;
+  border-radius: 8px;
+  font-size: 15px;
+  margin: 0;
+}
+
+.system-status-card button {
+  background-color: var(--secondary-blue);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  width: 260px;
+  padding: 14px 0;
+  font-size: 15px;
+}
+
+#prodSlider {
+  width: 90%;
+  height: 22px;
+  border-radius: 12px;
+  background: linear-gradient(to right, #2563eb var(--val, 30%), #3b82f6 var(--val, 30%));
+  appearance: none;
+  outline: none;
+  cursor: pointer;
+  margin-top: 8px;
+  border: none;
+}
+
+#prodSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 40px;
+  height: 40px;
+  background: #ffffff;
+  border: 2px solid #333;
+  border-radius: 50%;
+  cursor: pointer;
+  margin-top: -9px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+
+#prodSlider::-moz-range-thumb {
+  width: 40px;
+  height: 40px;
+  background: #ffffff;
+  border: 2px solid #333;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+
+#prodValue { 
+  font-size: 18px; 
+  color: #00ff99; 
+  font-weight: bold; 
+  margin-top: 8px; 
+}
+
+.card.wide.stack-vertical {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.start-btn, .stop-btn {
+  border: none;
+  padding: 16px 36px;
+  font-size: 20px;
+  border-radius: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+.start-btn {
+  background: linear-gradient(145deg, #00ff6a, #009e3c);
+  box-shadow: 0 0 12px #00ff6a;
+}
+.stop-btn {
+  background: linear-gradient(145deg, #ff3b3b, #a30000);
+  box-shadow: 0 0 12px #ff3b3b;
+}
+.start-btn:hover, .stop-btn:hover {
+  transform: scale(1.05);
+}
+.start-btn:active, .stop-btn:active {
+  transform: scale(0.95);
+}
+
+.mode-buttons { 
+  display: flex; 
+  justify-content: center; 
+  gap: 15px; 
+  margin-top: 10px; 
+}
+.mode-btn {
+  border: none; 
+  padding: 14px 28px; 
+  border-radius: 10px;
+  font-size: 18px; 
+  font-weight: bold; 
+  cursor: pointer;
+  color: #fff; 
+  transition: transform 0.15s, box-shadow 0.2s;
+}
+.auto-btn { 
+  background: linear-gradient(145deg, #2563eb, #1e40af); 
+  box-shadow: 0 0 10px #2563eb; 
+}
+.manual-btn { 
+  background: linear-gradient(145deg, #3b82f6, #2563eb); 
+  box-shadow: 0 0 10px #3b82f6; 
+}
+.mode-btn:hover { 
+  transform: scale(1.05); 
+}
+.mode-btn:active { 
+  transform: scale(0.95); 
+}
+
+.gauge-card { 
+  position: relative; 
+}
+.gauge-wrap { 
+  position: relative; 
+  width: 150px; 
+  height: 150px; 
+  margin: auto; 
+}
+.gauge-card canvas {
+  filter: drop-shadow(0 0 10px var(--accent-blue));
+}
+.gauge-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 26px;
+  color: #00ffcc;
+  font-weight: bold;
+  text-shadow: 0 0 8px var(--accent-blue);
+}
+
+.top-icons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+.icon-card {
+  background: rgba(37, 99, 235, 0.35);
+  padding: 10px;
+  border-radius: 6px;
+  text-align: center;
+  width: 80px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+}
+.icon-card i {
+  font-size: 24px;
+  color: var(--accent-blue);
+  margin-bottom: 5px;
+}
+.icon-card p {
+  font-size: 12px;
+  margin: 0;
+  color: #e0f2fe;
+}
+
+.triangle {
+  width: 0;
+  height: 0;
+  margin: 0 auto 10px;
+  border-left: 30px solid transparent;
+  border-right: 30px solid transparent;
+  border-bottom: 52px solid red;
+  animation: blink 1s infinite;
+}
+.triangle span {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: red;
+  font-size: 38px;
+  font-weight: bold;
+}
+.safe {
+  font-size: 48px;
+  color: #4caf50;
+  margin: 10px auto;
+}
+.hidden {
+  display: none;
+}
+@keyframes blink {
+  0%, 50%, 100% { opacity: 1; }
+  25%, 75% { opacity: 0; }
+}
+
+.vbar-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.vbar {
+  width: 70px;
+  height: 180px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+  position: relative;
+  margin: 10px auto;
+}
+.vbar .fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 0;
+  border-radius: 12px;
+  transition: height 0.6s ease-in-out;
+}
+.vbar.green .fill {
+  background: linear-gradient(180deg, #00ff6a, #007a33);
+}
+.vbar.blue .fill {
+  background: linear-gradient(180deg, #3b82f6, #1e40af);
+}
+.vbar.red .fill {
+  background: linear-gradient(180deg, #ff5555, #800000);
+}
+
+.analytics-labels { 
+  margin: 6px 0 10px 0; 
+  color: #bfefff; 
+  font-size: 14px; 
+  text-align: center; 
+}
+
+#cmdLog {
+  background: rgba(37, 99, 235, 0.3);
+  padding: 8px;
+  height: 100px;
+  overflow-y: auto;
+  border-radius: 6px;
+  font-family: monospace;
+  margin-top: 10px;
+  border: 1px solid rgba(59, 130, 246, 0.5);
+}
+
+/* Chart styling for better visibility */
+.chart-container {
+  position: relative;
+  height: 300px;
+  width: 100%;
+}
+
+.chart-axis-text {
+  color: #ffffff !important;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.chart-grid-line {
+  color: rgba(255, 255, 255, 0.3) !important;
+  border-width: 1px;
+}
+
+.chart-tick {
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+/* Ensure chart text is visible */
+canvas {
+  background: transparent !important;
+}
