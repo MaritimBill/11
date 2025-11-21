@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HE-NMPC Electrolyzer Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     
     <style>
-        /* Your existing CSS styles - keep them all */
         * {
             margin: 0;
             padding: 0;
@@ -248,6 +248,18 @@
             transform: translateX(0);
         }
 
+        .notification.success {
+            background: #1dd1a1;
+        }
+
+        .notification.warning {
+            background: #feca57;
+        }
+
+        .notification.info {
+            background: #4bcffa;
+        }
+
         .efficiency-gauge {
             text-align: center;
             padding: 20px;
@@ -406,88 +418,119 @@
     </div>
 
     <script>
-        // SIMPLE WEBSOCKET MQTT - NO EXTERNAL LIBRARIES
-        const MQTT_BROKER = 'broker.hivemq.com';
-        const MQTT_PORT = 8083;
-        const MQTT_TOPIC_DATA = 'electrolyzer/bill/data';
-        const MQTT_TOPIC_COMMANDS = 'electrolyzer/bill/commands';
+        // MQTT Configuration - USING PROPER MQTT.JS LIBRARY
+        const MQTT_CONFIG = {
+            broker: 'wss://broker.hivemq.com:8884/mqtt',
+            topics: {
+                data: 'electrolyzer/bill/data',
+                commands: 'electrolyzer/bill/commands'
+            }
+        };
 
-        let mqttSocket = null;
+        let mqttClient = null;
         let isConnected = false;
 
         console.log('🏁 PEM Dashboard Initializing...');
 
+        // Initialize MQTT Connection
         function connectMQTT() {
             console.log('🚀 Connecting to MQTT via WebSocket...');
             
             try {
-                if (mqttSocket) {
-                    mqttSocket.close();
-                }
-                
-                // Use wss:// for secure connection
-                mqttSocket = new WebSocket(`wss://${MQTT_BROKER}:${MQTT_PORT}/mqtt`);
-                
-                mqttSocket.onopen = function(event) {
-                    console.log('✅ WebSocket Connected to HiveMQ!');
+                // Create MQTT client with proper WebSocket connection
+                mqttClient = mqtt.connect(MQTT_CONFIG.broker, {
+                    clientId: 'pem-dashboard-' + Math.random().toString(16).substr(2, 8),
+                    clean: true,
+                    connectTimeout: 4000,
+                    reconnectPeriod: 2000
+                });
+
+                mqttClient.on('connect', () => {
+                    console.log('✅ Connected to MQTT broker!');
                     isConnected = true;
-                    document.getElementById('wifiStatus').textContent = 'CONNECTED';
-                    document.getElementById('wifiStatus').style.color = 'green';
-                    showNotification('Connected to Arduino!', 'success');
-                };
-                
-                mqttSocket.onmessage = function(event) {
+                    updateConnectionStatus('CONNECTED', true);
+                    
+                    // Subscribe to Arduino data
+                    mqttClient.subscribe(MQTT_CONFIG.topics.data, (err) => {
+                        if (!err) {
+                            console.log('👂 Subscribed to Arduino data');
+                            showNotification('Connected to Arduino!', 'success');
+                        }
+                    });
+                });
+
+                mqttClient.on('message', (topic, message) => {
                     try {
-                        const data = JSON.parse(event.data);
-                        console.log('📥 Data received:', data);
+                        const data = JSON.parse(message.toString());
+                        console.log('📥 Data received from Arduino:', data);
                         updateDashboard(data);
                         document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
                     } catch (e) {
-                        console.error('Parse error:', e);
+                        console.error('❌ JSON parse error:', e);
                     }
-                };
-                
-                mqttSocket.onclose = function(event) {
-                    console.log('🔌 WebSocket connection closed');
+                });
+
+                mqttClient.on('error', (error) => {
+                    console.error('❌ MQTT error:', error);
                     isConnected = false;
-                    document.getElementById('wifiStatus').textContent = 'RECONNECTING';
-                    document.getElementById('wifiStatus').style.color = 'orange';
-                    setTimeout(connectMQTT, 3000);
-                };
-                
-                mqttSocket.onerror = function(error) {
-                    console.log('❌ WebSocket error:', error);
+                    updateConnectionStatus('ERROR', false);
+                    showNotification('MQTT Connection Error', 'error');
+                });
+
+                mqttClient.on('close', () => {
+                    console.log('🔌 MQTT connection closed');
                     isConnected = false;
-                    document.getElementById('wifiStatus').textContent = 'ERROR';
-                    document.getElementById('wifiStatus').style.color = 'red';
-                    setTimeout(connectMQTT, 5000);
-                };
-                
+                    updateConnectionStatus('RECONNECTING...', false);
+                });
+
+                mqttClient.on('reconnect', () => {
+                    console.log('🔄 Attempting to reconnect...');
+                    updateConnectionStatus('RECONNECTING...', false);
+                });
+
             } catch (error) {
-                console.error('❌ Connection error:', error);
-                setTimeout(connectMQTT, 5000);
+                console.error('❌ Connection setup error:', error);
+                setTimeout(connectMQTT, 3000);
             }
         }
 
+        // Send commands to Arduino
         function sendMQTTCommand(command, value = null) {
-            if (!isConnected || !mqttSocket) {
+            if (!isConnected || !mqttClient) {
                 console.log('❌ Not connected to Arduino');
                 showNotification('Not connected to Arduino!', 'error');
-                return;
+                return false;
             }
             
-            const message = {
-                command: command,
-                timestamp: new Date().toISOString()
-            };
+            const message = {};
             
-            if (value !== null) message.value = value;
+            // Handle different command types
+            if (command === 'slider') {
+                message.slider = parseInt(value);
+            } else if (command === 'mode') {
+                message.mode = value;
+            } else if (command === 'START' || command === 'STOP') {
+                message.command = command;
+            }
             
-            mqttSocket.send(JSON.stringify(message));
-            console.log('📤 Sent:', command, value);
+            message.timestamp = new Date().toISOString();
+            
+            try {
+                mqttClient.publish(MQTT_CONFIG.topics.commands, JSON.stringify(message));
+                console.log('📤 MQTT Command sent:', message);
+                return true;
+            } catch (error) {
+                console.error('❌ Error sending command:', error);
+                showNotification('Failed to send command', 'error');
+                return false;
+            }
         }
 
+        // Update dashboard with Arduino data
         function updateDashboard(data) {
+            console.log('🔄 Updating dashboard with live data');
+            
+            // Update sensor values
             if (data.water !== undefined) {
                 document.getElementById('waterVal').textContent = data.water.toFixed(1) + '%';
                 updateBar('waterBar', data.water);
@@ -523,8 +566,13 @@
             if (data.systemMode !== undefined) {
                 document.getElementById('currentMode').textContent = data.systemMode;
             }
+            if (data.systemRunning !== undefined) {
+                // Update system status visually if needed
+                console.log('System running:', data.systemRunning);
+            }
         }
 
+        // Update bar visualization
         function updateBar(barId, value, max = 100) {
             const bar = document.getElementById(barId);
             if (bar) {
@@ -533,6 +581,7 @@
             }
         }
 
+        // Control functions
         function setProductionRate(value) {
             console.log('🎚️ Setting production rate via MQTT:', value + '%');
             sendMQTTCommand('slider', parseInt(value));
@@ -552,25 +601,27 @@
         }
 
         function stopSystem() {
-            console.log('⏹️ Stopping system via MQTT');
+            console.log('🛑 Stopping system via MQTT');
             sendMQTTCommand('STOP');
             showNotification('System STOPPED', 'warning');
         }
 
+        // Connection status update
+        function updateConnectionStatus(status, isConnected) {
+            const wifiElement = document.getElementById('wifiStatus');
+            if (wifiElement) {
+                wifiElement.textContent = status;
+                wifiElement.style.color = isConnected ? '#4CAF50' : '#f44336';
+            }
+        }
+
+        // Notification system
         function showNotification(message, type = 'info') {
             const notification = document.getElementById('notification');
             const notificationText = document.getElementById('notificationText');
             
             notificationText.textContent = message;
-            
-            const colors = {
-                success: '#1dd1a1',
-                error: '#ff6b6b',
-                warning: '#feca57',
-                info: '#4bcffa'
-            };
-            
-            notification.style.background = colors[type] || colors.info;
+            notification.className = 'notification ' + type;
             notification.classList.add('show');
             
             setTimeout(() => {
@@ -578,9 +629,11 @@
             }, 3000);
         }
 
+        // Initialize dashboard
         document.addEventListener('DOMContentLoaded', function() {
             console.log('✅ Dashboard initialization complete');
             
+            // Setup slider event listener
             const slider = document.getElementById('prodSlider');
             if (slider) {
                 slider.addEventListener('input', function(e) {
@@ -591,7 +644,15 @@
                 });
             }
             
-            setTimeout(connectMQTT, 1000);
+            // Start MQTT connection
+            connectMQTT();
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (mqttClient) {
+                mqttClient.end();
+            }
         });
     </script>
 </body>
