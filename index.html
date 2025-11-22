@@ -3,280 +3,693 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HE-NMPC Electrolyzer Control</title>
-    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <title>HE-NMPC Electrolyzer Control System</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {
-            --primary: #1e88e5; --primary-dark: #1565c0; --primary-light: #64b5f6;
-            --primary-gradient: linear-gradient(135deg, #1e88e5, #1565c0);
-            --secondary: #546e7a; --success: #4caf50; --warning: #ff9800; --danger: #f44336;
-            --card-bg: #ffffff; --light-bg: #f8fdff; --text-dark: #263238; --text-light: #607d8b;
-            --border: #e3f2fd; --shadow: rgba(30, 136, 229, 0.08); --shadow-hover: rgba(30, 136, 229, 0.15);
+            --primary: #1e88e5;
+            --primary-dark: #1565c0;
+            --primary-light: #64b5f6;
+            --secondary: #546e7a;
+            --success: #4caf50;
+            --warning: #ff9800;
+            --danger: #f44336;
+            --dark: #263238;
+            --light: #f5f7fa;
+            --card-bg: #ffffff;
+            --border: #e0e0e0;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+            --gradient: linear-gradient(135deg, #1e88e5 0%, #1565c0 100%);
         }
-        
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        body { background: linear-gradient(135deg, #f8fdff 0%, #e3f2fd 100%); min-height: 100vh; }
-        
-        .navbar { background: var(--primary-gradient); padding: 1rem 2rem; color: white; box-shadow: 0 4px 20px rgba(13, 71, 161, 0.15); }
-        .nav-container { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
-        .brand { display: flex; align-items: center; gap: 0.75rem; font-size: 1.3rem; font-weight: 700; }
-        .nav-links { display: flex; gap: 0.5rem; }
-        .nav-link { padding: 0.75rem 1.25rem; color: rgba(255,255,255,0.9); text-decoration: none; border-radius: 8px; transition: all 0.3s; }
-        .nav-link:hover, .nav-link.active { background: rgba(255,255,255,0.15); }
-        
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-        .page { display: none; }
-        .page.active { display: block; }
-        .page-header { text-align: center; margin-bottom: 2.5rem; }
-        .page-title { font-size: 2.5rem; font-weight: 800; color: var(--text-dark); margin-bottom: 0.75rem; }
-        .page-subtitle { font-size: 1.1rem; color: var(--text-light); }
-        
-        .status-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem; }
-        .status-card { background: var(--card-bg); border-radius: 16px; padding: 1.75rem; text-align: center; box-shadow: 0 4px 20px var(--shadow); border: 1px solid var(--border); transition: all 0.3s; }
-        .status-card:hover { transform: translateY(-5px); box-shadow: 0 8px 30px var(--shadow-hover); }
-        .status-label { color: var(--text-light); font-size: 0.85rem; font-weight: 600; margin-bottom: 0.75rem; }
-        .status-value { font-size: 2rem; font-weight: 700; }
-        
-        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
-        @media (max-width: 1200px) { .dashboard-grid { grid-template-columns: 1fr; } }
-        
-        .panel { background: var(--card-bg); border-radius: 20px; padding: 2rem; box-shadow: 0 4px 25px var(--shadow); border: 1px solid var(--border); transition: all 0.3s; }
-        .panel:hover { transform: translateY(-2px); box-shadow: 0 8px 35px var(--shadow-hover); }
-        .panel-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.75rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border); }
-        .panel-title { font-size: 1.4rem; font-weight: 700; color: var(--text-dark); }
-        
-        .control-group { margin-bottom: 2rem; }
-        .control-label { display: block; margin-bottom: 1rem; color: var(--text-dark); font-weight: 600; }
-        .slider-container { display: flex; align-items: center; gap: 1rem; margin: 1.25rem 0; }
-        .slider { flex: 1; height: 8px; background: var(--border); border-radius: 10px; -webkit-appearance: none; }
-        .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; background: var(--primary); border-radius: 50%; cursor: pointer; border: 3px solid white; box-shadow: 0 2px 8px rgba(30,136,229,0.3); }
-        .slider-value { min-width: 70px; text-align: center; font-weight: 700; color: var(--primary); }
-        
-        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0; }
-        .btn { padding: 1.1rem 1.5rem; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 0.75rem; }
-        .btn-primary { background: var(--primary-gradient); color: white; box-shadow: 0 4px 15px rgba(30,136,229,0.3); }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(30,136,229,0.4); }
-        .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--text-dark); }
-        .btn-outline:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-2px); }
-        
-        .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 2rem 0; }
-        .chart-container { background: var(--card-bg); border-radius: 16px; padding: 1.75rem; box-shadow: 0 4px 20px var(--shadow); border: 1px solid var(--border); }
-        .chart-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 1.25rem; color: var(--text-dark); }
-        .chart-wrapper { position: relative; height: 300px; width: 100%; }
-        
-        .notification { position: fixed; top: 25px; right: 25px; padding: 1.25rem 1.75rem; background: white; border-radius: 14px; transform: translateX(400px); transition: all 0.4s; z-index: 1000; box-shadow: 0 8px 30px rgba(0,0,0,0.12); display: flex; align-items: center; gap: 1rem; }
-        .notification.show { transform: translateX(0); }
-        .notification.success { border-left: 4px solid var(--success); }
-        .notification.error { border-left: 4px solid var(--danger); }
-        
-        @media (max-width: 768px) { 
-            .container { padding: 1rem; } 
-            .dashboard-grid, .chart-grid { grid-template-columns: 1fr; }
-            .btn-group { grid-template-columns: 1fr; }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f8f9fa;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--gradient);
+            color: white;
+            padding: 2rem 1rem;
+            box-shadow: var(--shadow);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+            padding: 0 1rem;
+        }
+
+        .logo i {
+            font-size: 1.5rem;
+        }
+
+        .logo h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .nav-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+
+        .nav-link i {
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h2 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        /* Status Cards */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .status-card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            border-left: 4px solid var(--primary);
+        }
+
+        .status-card.warning {
+            border-left-color: var(--warning);
+        }
+
+        .status-card.success {
+            border-left-color: var(--success);
+        }
+
+        .status-card.danger {
+            border-left-color: var(--danger);
+        }
+
+        .status-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-title {
+            font-size: 0.9rem;
+            color: var(--secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(30, 136, 229, 0.1);
+            color: var(--primary);
+        }
+
+        .status-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 0.25rem;
+        }
+
+        .status-trend {
+            font-size: 0.85rem;
+            color: var(--success);
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .status-trend.down {
+            color: var(--danger);
+        }
+
+        /* Charts Grid */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .chart-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        /* MPC Comparison */
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .mpc-card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .mpc-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .mpc-card.featured {
+            border: 2px solid var(--primary);
+            background: linear-gradient(135deg, #f8fdff 0%, #e3f2fd 100%);
+        }
+
+        .mpc-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 1.5rem;
+        }
+
+        .he-nmpc .mpc-icon { background: rgba(30, 136, 229, 0.1); color: var(--primary); }
+        .stochastic .mpc-icon { background: rgba(76, 175, 80, 0.1); color: var(--success); }
+        .mixed-integer .mpc-icon { background: rgba(255, 152, 0, 0.1); color: var(--warning); }
+        .standard .mpc-icon { background: rgba(117, 117, 117, 0.1); color: var(--secondary); }
+
+        .mpc-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .mpc-score {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .he-nmpc .mpc-score { color: var(--primary); }
+        .stochastic .mpc-score { color: var(--success); }
+        .mixed-integer .mpc-score { color: var(--warning); }
+        .standard .mpc-score { color: var(--secondary); }
+
+        .mpc-metrics {
+            display: flex;
+            justify-content: space-around;
+            font-size: 0.85rem;
+            color: var(--secondary);
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        /* Control Panel */
+        .control-panel {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-label {
+            display: block;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .slider {
+            flex: 1;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--gradient);
+            color: white;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--border);
+            color: var(--dark);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border-left: 4px solid var(--primary);
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            border-left-color: var(--success);
+        }
+
+        .notification.error {
+            border-left-color: var(--danger);
         }
     </style>
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="brand">HE-NMPC Electrolyzer Control</div>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <i class="fas fa-atom"></i>
+                <h1>HE-NMPC Control</h1>
+            </div>
             <div class="nav-links">
-                <a href="#" class="nav-link active" onclick="showPage('dashboard')">Dashboard</a>
-                <a href="#" class="nav-link" onclick="showPage('electrolyzer')">Electrolyzer</a>
-                <a href="#" class="nav-link" onclick="showPage('analytics')">Analytics</a>
+                <a href="#" class="nav-link active">
+                    <i class="fas fa-chart-line"></i>
+                    Dashboard
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="fas fa-industry"></i>
+                    Electrolyzer
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="fas fa-brain"></i>
+                    Neural MPC
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="fas fa-chart-bar"></i>
+                    Analytics
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="fas fa-cog"></i>
+                    Settings
+                </a>
             </div>
         </div>
-    </nav>
 
-    <div id="dashboard" class="page active">
-        <div class="container">
-            <div class="page-header">
-                <h1 class="page-title">HE-NMPC Control Dashboard</h1>
-                <p class="page-subtitle">Real-time PEM Electrolyzer Monitoring & Control</p>
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="header">
+                <h2>HE-NMPC Electrolyzer Control Dashboard</h2>
+                <div class="time-display" id="currentTime">14:30:02</div>
             </div>
 
-            <div class="status-bar">
-                <div class="status-card"><div class="status-label">System Status</div><div class="status-value" style="color:var(--success)">RUNNING</div></div>
-                <div class="status-card"><div class="status-label">HE-NMPC Mode</div><div class="status-value" style="color:var(--primary)">ACTIVE</div></div>
-                <div class="status-card"><div class="status-label">Production Rate</div><div class="status-value" id="productionRate">42.3%</div></div>
-                <div class="status-card"><div class="status-label">Efficiency</div><div class="status-value" id="efficiency">78.5%</div></div>
-                <div class="status-card"><div class="status-label">Safety Margin</div><div class="status-value" id="safetyMargin">15.2%</div></div>
-                <div class="status-card"><div class="status-label">Last Update</div><div class="status-value" id="lastUpdate">14:30:02</div></div>
+            <!-- Status Grid -->
+            <div class="status-grid">
+                <div class="status-card">
+                    <div class="status-header">
+                        <div class="status-title">System Status</div>
+                        <div class="status-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                    </div>
+                    <div class="status-value" id="systemStatus">OPERATIONAL</div>
+                    <div class="status-trend">
+                        <i class="fas fa-arrow-up"></i>
+                        All systems normal
+                    </div>
+                </div>
+                <div class="status-card success">
+                    <div class="status-header">
+                        <div class="status-title">Production Rate</div>
+                        <div class="status-icon">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                    </div>
+                    <div class="status-value" id="productionRate">86.5%</div>
+                    <div class="status-trend">
+                        <i class="fas fa-arrow-up"></i>
+                        2.3% from last hour
+                    </div>
+                </div>
+                <div class="status-card warning">
+                    <div class="status-header">
+                        <div class="status-title">Efficiency</div>
+                        <div class="status-icon">
+                            <i class="fas fa-tachometer-alt"></i>
+                        </div>
+                    </div>
+                    <div class="status-value" id="efficiency">78.2%</div>
+                    <div class="status-trend">
+                        <i class="fas fa-arrow-up"></i>
+                        1.1% optimized
+                    </div>
+                </div>
+                <div class="status-card">
+                    <div class="status-header">
+                        <div class="status-title">Safety Margin</div>
+                        <div class="status-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                    </div>
+                    <div class="status-value" id="safetyMargin">22.7%</div>
+                    <div class="status-trend">
+                        <i class="fas fa-check"></i>
+                        Within limits
+                    </div>
+                </div>
             </div>
 
-            <div class="dashboard-grid">
-                <div class="panel">
-                    <div class="panel-header"><h2 class="panel-title">Economic Control</h2></div>
-                    <div class="control-group">
-                        <label class="control-label">Economic Setpoint (Upper Layer)</label>
-                        <div class="slider-container"><span>0%</span><input type="range" min="0" max="100" value="45" class="slider" id="economicSetpoint"><span>100%</span></div>
-                        <div class="slider-value" id="economicValue">45%</div>
+            <!-- MPC Comparison -->
+            <div class="comparison-grid">
+                <div class="mpc-card he-nmpc featured">
+                    <div class="mpc-icon">
+                        <i class="fas fa-brain"></i>
                     </div>
-                    <div class="control-group">
-                        <label class="control-label">Safety Setpoint (Lower Layer)</label>
-                        <div class="slider-container"><span>0%</span><input type="range" min="0" max="100" value="42" class="slider" id="safetySetpoint" disabled><span>100%</span></div>
-                        <div class="slider-value" id="safetyValue">42%</div>
-                    </div>
-                    <div class="btn-group">
-                        <button class="btn btn-primary" onclick="sendUpperLayerCommand('RUN_OPTIMIZATION')">RUN OPTIMIZATION</button>
-                        <button class="btn btn-outline" onclick="sendLowerLayerCommand('CALIBRATE_SENSORS')">CALIBRATE SENSORS</button>
+                    <div class="mpc-name">HE-NMPC</div>
+                    <div class="mpc-score">94%</div>
+                    <div class="mpc-metrics">
+                        <div>
+                            <div>Economic</div>
+                            <div class="metric-value">96%</div>
+                        </div>
+                        <div>
+                            <div>Safety</div>
+                            <div class="metric-value">95%</div>
+                        </div>
+                        <div>
+                            <div>Speed</div>
+                            <div class="metric-value">91%</div>
+                        </div>
                     </div>
                 </div>
-
-                <div class="panel">
-                    <div class="panel-header"><h2 class="panel-title">Process Overview</h2></div>
-                    <div class="chart-wrapper"><canvas id="processChart"></canvas></div>
+                <div class="mpc-card stochastic">
+                    <div class="mpc-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="mpc-name">Stochastic MPC</div>
+                    <div class="mpc-score">87%</div>
+                    <div class="mpc-metrics">
+                        <div>
+                            <div>Economic</div>
+                            <div class="metric-value">89%</div>
+                        </div>
+                        <div>
+                            <div>Safety</div>
+                            <div class="metric-value">85%</div>
+                        </div>
+                        <div>
+                            <div>Speed</div>
+                            <div class="metric-value">82%</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mpc-card mixed-integer">
+                    <div class="mpc-icon">
+                        <i class="fas fa-sitemap"></i>
+                    </div>
+                    <div class="mpc-name">Mixed-Integer MPC</div>
+                    <div class="mpc-score">82%</div>
+                    <div class="mpc-metrics">
+                        <div>
+                            <div>Economic</div>
+                            <div class="metric-value">84%</div>
+                        </div>
+                        <div>
+                            <div>Safety</div>
+                            <div class="metric-value">79%</div>
+                        </div>
+                        <div>
+                            <div>Speed</div>
+                            <div class="metric-value">76%</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mpc-card standard">
+                    <div class="mpc-icon">
+                        <i class="fas fa-sliders-h"></i>
+                    </div>
+                    <div class="mpc-name">Standard MPC</div>
+                    <div class="mpc-score">76%</div>
+                    <div class="mpc-metrics">
+                        <div>
+                            <div>Economic</div>
+                            <div class="metric-value">78%</div>
+                        </div>
+                        <div>
+                            <div>Safety</div>
+                            <div class="metric-value">74%</div>
+                        </div>
+                        <div>
+                            <div>Speed</div>
+                            <div class="metric-value">72%</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="chart-grid">
-                <div class="chart-container">
-                    <div class="chart-title">MPC Performance Comparison</div>
-                    <div class="chart-wrapper"><canvas id="performanceChart"></canvas></div>
+            <!-- Charts Grid -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Performance Comparison Over Time</div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
                 </div>
-                <div class="chart-container">
-                    <div class="chart-title">Financial Performance</div>
-                    <div class="chart-wrapper"><canvas id="financialChart"></canvas></div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Cost Distribution Analysis</div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="costChart"></canvas>
+                    </div>
                 </div>
-                <div class="chart-container">
-                    <div class="chart-title">Cost Distribution</div>
-                    <div class="chart-wrapper"><canvas id="costChart"></canvas></div>
+            </div>
+
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <div class="chart-header">
+                    <div class="chart-title">HE-NMPC Control Parameters</div>
                 </div>
-                <div class="chart-container">
-                    <div class="chart-title">Efficiency Trends</div>
-                    <div class="chart-wrapper"><canvas id="efficiencyChart"></canvas></div>
+                <div class="control-group">
+                    <label class="control-label">Economic Optimization Setpoint (Upper Layer)</label>
+                    <div class="slider-container">
+                        <span>0%</span>
+                        <input type="range" min="0" max="100" value="75" class="slider" id="economicSetpoint">
+                        <span>100%</span>
+                        <span class="slider-value" id="economicValue">75%</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Safety Constraint Setpoint (Lower Layer)</label>
+                    <div class="slider-container">
+                        <span>0%</span>
+                        <input type="range" min="0" max="100" value="72" class="slider" id="safetySetpoint" disabled>
+                        <span>100%</span>
+                        <span class="slider-value" id="safetyValue">72%</span>
+                    </div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="sendUpperLayerCommand('RUN_OPTIMIZATION')">
+                        <i class="fas fa-play"></i>
+                        Run Economic Optimization
+                    </button>
+                    <button class="btn btn-outline" onclick="sendLowerLayerCommand('CALIBRATE_SENSORS')">
+                        <i class="fas fa-sync"></i>
+                        Calibrate Safety Layer
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="electrolyzer" class="page">
-        <div class="container">
-            <div class="page-header">
-                <h1 class="page-title">Electrolyzer Detailed View</h1>
-                <p class="page-subtitle">Real-time Process Parameters</p>
-            </div>
-            <!-- Additional electrolyzer content -->
-        </div>
-    </div>
-
-    <div id="analytics" class="page">
-        <div class="container">
-            <div class="page-header">
-                <h1 class="page-title">Performance Analytics</h1>
-                <p class="page-subtitle">HE-NMPC vs Other Methods</p>
-            </div>
-            <!-- Additional analytics content -->
-        </div>
-    </div>
-
+    <!-- Notification -->
     <div class="notification" id="notification">
-        <span id="notificationText">HE-NMPC System Ready</span>
+        <i class="fas fa-info-circle"></i>
+        <span id="notificationText">HE-NMPC System Initialized</span>
     </div>
 
     <script>
-        // Configuration
-        const MQTT_CONFIG = {
-            broker: 'wss://broker.hivemq.com:8884/mqtt',
-            topics: { 
-                data: 'electrolyzer/bill/data', 
-                upper_commands: 'electrolyzer/bill/upper_commands', 
-                lower_commands: 'electrolyzer/bill/lower_commands' 
-            }
-        };
-
-        let mqttClient = null, isConnected = false, charts = {};
-
-        // Page Navigation
-        function showPage(pageId) {
-            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
-            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-            document.getElementById(pageId).classList.add('active');
-            event.target.classList.add('active');
-        }
-
         // Initialize Charts
         function initializeCharts() {
-            // Process Overview Chart
-            charts.processChart = new Chart(document.getElementById('processChart'), {
-                type: 'line',
-                data: {
-                    labels: Array.from({length: 20}, (_, i) => `${i}s`),
-                    datasets: [{
-                        label: 'Production Rate',
-                        data: Array.from({length: 20}, () => Math.random() * 20 + 40),
-                        borderColor: '#1e88e5',
-                        backgroundColor: 'rgba(30, 136, 229, 0.1)',
-                        tension: 0.4,
-                        fill: true,
-                        borderWidth: 3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: false, min: 30, max: 70,
-                            grid: { color: 'rgba(0,0,0,0.05)' } },
-                        x: { grid: { display: false } }
-                    }
-                }
-            });
-
             // Performance Comparison Chart
-            charts.performanceChart = new Chart(document.getElementById('performanceChart'), {
-                type: 'bar',
-                data: {
-                    labels: ['HE-NMPC', 'Stochastic MPC', 'Mixed-Integer MPC', 'Standard MPC'],
-                    datasets: [{
-                        label: 'Performance Score',
-                        data: [94, 87, 82, 76],
-                        backgroundColor: [
-                            'rgba(30, 136, 229, 0.8)',
-                            'rgba(84, 110, 122, 0.6)',
-                            'rgba(84, 110, 122, 0.6)',
-                            'rgba(84, 110, 122, 0.6)'
-                        ],
-                        borderColor: [
-                            'rgb(30, 136, 229)',
-                            'rgb(84, 110, 122)',
-                            'rgb(84, 110, 122)',
-                            'rgb(84, 110, 122)'
-                        ],
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: true, max: 100,
-                            title: { display: true, text: 'Performance (%)' } }
-                    }
-                }
-            });
-
-            // Financial Performance Chart
-            charts.financialChart = new Chart(document.getElementById('financialChart'), {
+            const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+            new Chart(performanceCtx, {
                 type: 'line',
                 data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
                     datasets: [
                         {
-                            label: 'HE-NMPC Cost',
-                            data: [185, 172, 168, 158, 152, 142],
+                            label: 'HE-NMPC',
+                            data: [82, 85, 88, 90, 92, 93, 94, 94],
                             borderColor: '#1e88e5',
                             backgroundColor: 'rgba(30, 136, 229, 0.1)',
                             tension: 0.4,
-                            borderWidth: 3
+                            borderWidth: 3,
+                            fill: true
                         },
                         {
-                            label: 'Standard MPC Cost',
-                            data: [210, 205, 198, 192, 188, 185],
-                            borderColor: '#546e7a',
-                            backgroundColor: 'rgba(84, 110, 122, 0.1)',
+                            label: 'Stochastic MPC',
+                            data: [80, 82, 84, 85, 86, 86, 87, 87],
+                            borderColor: '#4caf50',
+                            backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                            tension: 0.4,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Mixed-Integer MPC',
+                            data: [78, 79, 80, 81, 81, 82, 82, 82],
+                            borderColor: '#ff9800',
+                            backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                            tension: 0.4,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Standard MPC',
+                            data: [75, 75, 76, 76, 76, 76, 76, 76],
+                            borderColor: '#757575',
+                            backgroundColor: 'rgba(117, 117, 117, 0.1)',
                             tension: 0.4,
                             borderWidth: 2
                         }
@@ -285,66 +698,79 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
                     scales: {
-                        y: { 
+                        y: {
                             beginAtZero: false,
-                            title: { display: true, text: 'Daily Cost ($)' }
+                            min: 70,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Performance Score (%)'
+                            }
                         }
                     }
                 }
             });
 
-            // Cost Distribution Pie Chart
-            charts.costChart = new Chart(document.getElementById('costChart'), {
+            // Cost Distribution Chart
+            const costCtx = document.getElementById('costChart').getContext('2d');
+            new Chart(costCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Electricity', 'Maintenance', 'Water', 'Other'],
+                    labels: ['HE-NMPC', 'Stochastic MPC', 'Mixed-Integer MPC', 'Standard MPC'],
                     datasets: [{
-                        data: [65, 15, 12, 8],
+                        data: [142, 168, 185, 210],
                         backgroundColor: [
                             'rgba(30, 136, 229, 0.8)',
                             'rgba(76, 175, 80, 0.8)',
-                            'rgba(3, 169, 244, 0.8)',
-                            'rgba(255, 152, 0, 0.8)'
+                            'rgba(255, 152, 0, 0.8)',
+                            'rgba(117, 117, 117, 0.8)'
                         ],
-                        borderWidth: 2,
-                        borderColor: '#ffffff'
+                        borderColor: [
+                            'rgb(30, 136, 229)',
+                            'rgb(76, 175, 80)',
+                            'rgb(255, 152, 0)',
+                            'rgb(117, 117, 117)'
+                        ],
+                        borderWidth: 2
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'bottom' }
-                    }
-                }
-            });
-
-            // Efficiency Trends Chart
-            charts.efficiencyChart = new Chart(document.getElementById('efficiencyChart'), {
-                type: 'line',
-                data: {
-                    labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
-                    datasets: [{
-                        label: 'Efficiency',
-                        data: [75, 78, 82, 79, 76, 74],
-                        borderColor: '#4caf50',
-                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                        tension: 0.4,
-                        borderWidth: 3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: false, min: 70, max: 90 }
+                        legend: {
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Daily Cost: $${context.raw}`;
+                                }
+                            }
+                        }
                     }
                 }
             });
         }
 
         // MQTT Functions
+        const MQTT_CONFIG = {
+            broker: 'wss://broker.hivemq.com:8884/mqtt',
+            topics: {
+                data: 'electrolyzer/he-nmpc/data',
+                upper_commands: 'electrolyzer/he-nmpc/upper_commands',
+                lower_commands: 'electrolyzer/he-nmpc/lower_commands'
+            }
+        };
+
+        let mqttClient = null;
+
         function connectMQTT() {
             try {
                 mqttClient = mqtt.connect(MQTT_CONFIG.broker, {
@@ -352,87 +778,90 @@
                 });
 
                 mqttClient.on('connect', () => {
-                    isConnected = true;
-                    showNotification('HE-NMPC System Connected', 'success');
+                    showNotification('HE-NMPC System Connected to MQTT Broker', 'success');
                     mqttClient.subscribe(MQTT_CONFIG.topics.data);
                 });
 
                 mqttClient.on('message', (topic, message) => {
                     try {
                         const data = JSON.parse(message.toString());
-                        updateAllDisplays(data);
-                        document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
-                    } catch (e) { console.error('JSON parse error:', e); }
+                        updateDashboard(data);
+                    } catch (e) {
+                        console.error('MQTT Message Parse Error:', e);
+                    }
                 });
 
-            } catch (error) { console.error('Connection error:', error); }
+            } catch (error) {
+                console.error('MQTT Connection Error:', error);
+            }
         }
 
         function sendUpperLayerCommand(command) {
-            if (!isConnected) { showNotification('Upper layer not connected', 'error'); return; }
-            const message = { command: command, layer: 'UPPER', timestamp: new Date().toISOString() };
-            mqttClient.publish(MQTT_CONFIG.topics.upper_commands, JSON.stringify(message));
-            showNotification('Python optimization started', 'success');
+            if (mqttClient) {
+                const message = {
+                    command: command,
+                    layer: 'UPPER',
+                    timestamp: new Date().toISOString(),
+                    setpoint: document.getElementById('economicSetpoint').value
+                };
+                mqttClient.publish(MQTT_CONFIG.topics.upper_commands, JSON.stringify(message));
+                showNotification('Economic Optimization Started', 'success');
+            }
         }
 
         function sendLowerLayerCommand(command) {
-            if (!isConnected) { showNotification('Lower layer not connected', 'error'); return; }
-            const message = { command: command, layer: 'LOWER', timestamp: new Date().toISOString() };
-            mqttClient.publish(MQTT_CONFIG.topics.lower_commands, JSON.stringify(message));
-            showNotification('Arduino safety MPC active', 'success');
-        }
-
-        // Update displays
-        function updateAllDisplays(data) {
-            if (data.production !== undefined) {
-                document.getElementById('productionRate').textContent = data.production.toFixed(1) + '%';
-                document.getElementById('safetyValue').textContent = data.production.toFixed(1) + '%';
-                document.getElementById('safetySetpoint').value = data.production;
+            if (mqttClient) {
+                const message = {
+                    command: command,
+                    layer: 'LOWER',
+                    timestamp: new Date().toISOString()
+                };
+                mqttClient.publish(MQTT_CONFIG.topics.lower_commands, JSON.stringify(message));
+                showNotification('Safety Layer Calibration Initiated', 'success');
             }
-            if (data.efficiency !== undefined) document.getElementById('efficiency').textContent = data.efficiency.toFixed(1) + '%';
         }
 
-        // Notification system
+        // Dashboard Functions
+        function updateDashboard(data) {
+            if (data.productionRate !== undefined) {
+                document.getElementById('productionRate').textContent = data.productionRate.toFixed(1) + '%';
+            }
+            if (data.efficiency !== undefined) {
+                document.getElementById('efficiency').textContent = data.efficiency.toFixed(1) + '%';
+            }
+            if (data.safetyMargin !== undefined) {
+                document.getElementById('safetyMargin').textContent = data.safetyMargin.toFixed(1) + '%';
+            }
+            document.getElementById('currentTime').textContent = new Date().toLocaleTimeString();
+        }
+
         function showNotification(message, type = 'info') {
             const notification = document.getElementById('notification');
             const text = document.getElementById('notificationText');
+            
             text.textContent = message;
             notification.className = `notification ${type}`;
             notification.classList.add('show');
-            setTimeout(() => notification.classList.remove('show'), 3000);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
         }
 
-        // Initialize when page loads
+        // Initialize Dashboard
         document.addEventListener('DOMContentLoaded', function() {
             initializeCharts();
             connectMQTT();
-            
-            // Setup slider events
-            document.getElementById('economicSetpoint').addEventListener('input', function(e) {
-                const value = e.target.value;
-                document.getElementById('economicValue').textContent = value + '%';
-                if (isConnected) {
-                    const message = { 
-                        command: 'SET_SETPOINT', 
-                        value: parseFloat(value),
-                        layer: 'UPPER', 
-                        timestamp: new Date().toISOString() 
-                    };
-                    mqttClient.publish(MQTT_CONFIG.topics.upper_commands, JSON.stringify(message));
-                }
-            });
 
-            // Simulate real-time data updates
+            // Update time every second
             setInterval(() => {
-                if (charts.processChart) {
-                    const chart = charts.processChart;
-                    if (chart.data.datasets[0].data.length >= 20) {
-                        chart.data.datasets[0].data.shift();
-                    }
-                    chart.data.datasets[0].data.push(Math.random() * 20 + 40);
-                    chart.update('none');
-                }
+                document.getElementById('currentTime').textContent = new Date().toLocaleTimeString();
             }, 1000);
+
+            // Slider event listeners
+            document.getElementById('economicSetpoint').addEventListener('input', function(e) {
+                document.getElementById('economicValue').textContent = e.target.value + '%';
+            });
         });
     </script>
 </body>
