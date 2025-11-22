@@ -6,7 +6,7 @@
     <title>HE-NMPC Electrolyzer Control System</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --primary: #1e88e5;
@@ -17,11 +17,14 @@
             --warning: #ff9800;
             --danger: #f44336;
             --dark: #263238;
-            --light: #f5f7fa;
+            --light: #f8f9fa;
             --card-bg: #ffffff;
+            --sidebar-bg: #1a237e;
+            --header-bg: #283593;
             --border: #e0e0e0;
             --shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
             --gradient: linear-gradient(135deg, #1e88e5 0%, #1565c0 100%);
+            --sidebar-gradient: linear-gradient(180deg, #1a237e 0%, #283593 100%);
         }
 
         * {
@@ -32,39 +35,45 @@
         }
 
         body {
-            background-color: #f8f9fa;
+            background-color: #f5f7fa;
             color: var(--dark);
             line-height: 1.6;
         }
 
         .dashboard-container {
             display: grid;
-            grid-template-columns: 250px 1fr;
+            grid-template-columns: 280px 1fr;
             min-height: 100vh;
         }
 
         /* Sidebar */
         .sidebar {
-            background: var(--gradient);
+            background: var(--sidebar-gradient);
             color: white;
-            padding: 2rem 1rem;
-            box-shadow: var(--shadow);
+            padding: 2rem 1.5rem;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
         }
 
         .logo {
             display: flex;
             align-items: center;
             gap: 0.75rem;
-            margin-bottom: 2rem;
-            padding: 0 1rem;
+            margin-bottom: 2.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .logo i {
-            font-size: 1.5rem;
+        .logo-icon {
+            font-size: 1.8rem;
+            color: #64b5f6;
         }
 
-        .logo h1 {
-            font-size: 1.25rem;
+        .logo-text {
+            font-size: 1.3rem;
             font-weight: 700;
         }
 
@@ -78,11 +87,12 @@
             display: flex;
             align-items: center;
             gap: 0.75rem;
-            padding: 0.75rem 1rem;
-            color: rgba(255, 255, 255, 0.9);
+            padding: 0.85rem 1rem;
+            color: rgba(255, 255, 255, 0.85);
             text-decoration: none;
             border-radius: 8px;
             transition: all 0.3s ease;
+            font-weight: 500;
         }
 
         .nav-link:hover, .nav-link.active {
@@ -93,6 +103,7 @@
         .nav-link i {
             width: 20px;
             text-align: center;
+            font-size: 1.1rem;
         }
 
         /* Main Content */
@@ -103,18 +114,41 @@
 
         .header {
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             align-items: center;
             margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
         }
 
-        .header h2 {
-            font-size: 1.75rem;
+        .header-title h1 {
+            font-size: 1.8rem;
             font-weight: 700;
             color: var(--dark);
+            margin-bottom: 0.25rem;
         }
 
-        /* Status Cards */
+        .header-title p {
+            color: var(--secondary);
+            font-size: 1rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .time-display {
+            background: var(--card-bg);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        /* Status Grid */
         .status-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -128,6 +162,12 @@
             border-radius: 12px;
             box-shadow: var(--shadow);
             border-left: 4px solid var(--primary);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .status-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
         }
 
         .status-card.warning {
@@ -144,9 +184,9 @@
 
         .status-header {
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
         }
 
         .status-title {
@@ -168,6 +208,21 @@
             color: var(--primary);
         }
 
+        .status-card.warning .status-icon {
+            background: rgba(255, 152, 0, 0.1);
+            color: var(--warning);
+        }
+
+        .status-card.success .status-icon {
+            background: rgba(76, 175, 80, 0.1);
+            color: var(--success);
+        }
+
+        .status-card.danger .status-icon {
+            background: rgba(244, 67, 54, 0.1);
+            color: var(--danger);
+        }
+
         .status-value {
             font-size: 1.75rem;
             font-weight: 700;
@@ -187,12 +242,182 @@
             color: var(--danger);
         }
 
+        /* MPC Comparison Section */
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 2rem 0 1.5rem;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .section-title i {
+            color: var(--primary);
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 1200px) {
+            .comparison-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .mpc-card {
+            background: var(--card-bg);
+            padding: 1.75rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mpc-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .mpc-card.featured {
+            border: 2px solid var(--primary);
+            background: linear-gradient(135deg, #f8fdff 0%, #e3f2fd 100%);
+        }
+
+        .mpc-card.featured::before {
+            content: 'RECOMMENDED';
+            position: absolute;
+            top: 10px;
+            right: -30px;
+            background: var(--primary);
+            color: white;
+            padding: 4px 30px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            transform: rotate(45deg);
+        }
+
+        .mpc-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 1.8rem;
+        }
+
+        .he-nmpc .mpc-icon { background: rgba(30, 136, 229, 0.15); color: var(--primary); }
+        .stochastic .mpc-icon { background: rgba(76, 175, 80, 0.15); color: var(--success); }
+        .mixed-integer .mpc-icon { background: rgba(255, 152, 0, 0.15); color: var(--warning); }
+        .standard .mpc-icon { background: rgba(117, 117, 117, 0.15); color: var(--secondary); }
+
+        .mpc-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+        }
+
+        .mpc-description {
+            font-size: 0.85rem;
+            color: var(--secondary);
+            margin-bottom: 1rem;
+            line-height: 1.4;
+        }
+
+        .mpc-score {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }
+
+        .he-nmpc .mpc-score { color: var(--primary); }
+        .stochastic .mpc-score { color: var(--success); }
+        .mixed-integer .mpc-score { color: var(--warning); }
+        .standard .mpc-score { color: var(--secondary); }
+
+        .mpc-metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .metric-item {
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--secondary);
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-value {
+            font-weight: 700;
+            color: var(--dark);
+            font-size: 1rem;
+        }
+
+        .mpc-pros {
+            text-align: left;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .pros-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+        }
+
+        .pros-list {
+            list-style-type: none;
+            font-size: 0.8rem;
+            color: var(--secondary);
+        }
+
+        .pros-list li {
+            margin-bottom: 0.25rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .pros-list li i {
+            color: var(--success);
+            margin-top: 0.1rem;
+        }
+
         /* Charts Grid */
         .charts-grid {
             display: grid;
             grid-template-columns: 2fr 1fr;
             gap: 1.5rem;
             margin-bottom: 2rem;
+        }
+
+        @media (max-width: 1200px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .chart-card {
@@ -204,7 +429,7 @@
 
         .chart-header {
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             align-items: center;
             margin-bottom: 1rem;
         }
@@ -221,81 +446,10 @@
             width: 100%;
         }
 
-        /* MPC Comparison */
-        .comparison-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .mpc-card {
-            background: var(--card-bg);
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: var(--shadow);
-            text-align: center;
-            transition: transform 0.3s ease;
-        }
-
-        .mpc-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .mpc-card.featured {
-            border: 2px solid var(--primary);
-            background: linear-gradient(135deg, #f8fdff 0%, #e3f2fd 100%);
-        }
-
-        .mpc-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1rem;
-            font-size: 1.5rem;
-        }
-
-        .he-nmpc .mpc-icon { background: rgba(30, 136, 229, 0.1); color: var(--primary); }
-        .stochastic .mpc-icon { background: rgba(76, 175, 80, 0.1); color: var(--success); }
-        .mixed-integer .mpc-icon { background: rgba(255, 152, 0, 0.1); color: var(--warning); }
-        .standard .mpc-icon { background: rgba(117, 117, 117, 0.1); color: var(--secondary); }
-
-        .mpc-name {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-
-        .mpc-score {
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-        }
-
-        .he-nmpc .mpc-score { color: var(--primary); }
-        .stochastic .mpc-score { color: var(--success); }
-        .mixed-integer .mpc-score { color: var(--warning); }
-        .standard .mpc-score { color: var(--secondary); }
-
-        .mpc-metrics {
-            display: flex;
-            justify-content: space-around;
-            font-size: 0.85rem;
-            color: var(--secondary);
-        }
-
-        .metric-value {
-            font-weight: 600;
-            color: var(--dark);
-        }
-
         /* Control Panel */
         .control-panel {
             background: var(--card-bg);
-            padding: 1.5rem;
+            padding: 1.75rem;
             border-radius: 12px;
             box-shadow: var(--shadow);
             margin-bottom: 2rem;
@@ -310,6 +464,13 @@
             margin-bottom: 0.75rem;
             font-weight: 600;
             color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-label i {
+            color: var(--primary);
         }
 
         .slider-container {
@@ -338,14 +499,29 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.2);
         }
 
+        .slider-value {
+            min-width: 60px;
+            text-align: center;
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+
         .btn-group {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .btn-group {
+                grid-template-columns: 1fr;
+            }
         }
 
         .btn {
-            padding: 0.75rem 1.5rem;
+            padding: 0.85rem 1.5rem;
             border: none;
             border-radius: 8px;
             font-weight: 600;
@@ -360,6 +536,12 @@
         .btn-primary {
             background: var(--gradient);
             color: white;
+            box-shadow: 0 4px 10px rgba(30, 136, 229, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(30, 136, 229, 0.4);
         }
 
         .btn-outline {
@@ -368,9 +550,10 @@
             color: var(--dark);
         }
 
-        .btn:hover {
+        .btn-outline:hover {
+            border-color: var(--primary);
+            color: var(--primary);
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
         /* Notification */
@@ -389,6 +572,7 @@
             align-items: center;
             gap: 0.75rem;
             border-left: 4px solid var(--primary);
+            max-width: 400px;
         }
 
         .notification.show {
@@ -402,6 +586,34 @@
         .notification.error {
             border-left-color: var(--danger);
         }
+
+        .notification.warning {
+            border-left-color: var(--warning);
+        }
+
+        /* Page Content */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                display: none;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+            }
+        }
     </style>
 </head>
 <body>
@@ -409,238 +621,482 @@
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="logo">
-                <i class="fas fa-atom"></i>
-                <h1>HE-NMPC Control</h1>
+                <i class="fas fa-atom logo-icon"></i>
+                <div class="logo-text">HE-NMPC Control</div>
             </div>
             <div class="nav-links">
-                <a href="#" class="nav-link active">
+                <a href="#" class="nav-link active" onclick="showPage('dashboard')">
                     <i class="fas fa-chart-line"></i>
                     Dashboard
                 </a>
-                <a href="#" class="nav-link">
+                <a href="#" class="nav-link" onclick="showPage('electrolyzer')">
                     <i class="fas fa-industry"></i>
-                    Electrolyzer
+                    Electrolyzer Control
                 </a>
-                <a href="#" class="nav-link">
+                <a href="#" class="nav-link" onclick="showPage('analytics')">
+                    <i class="fas fa-chart-bar"></i>
+                    Performance Analytics
+                </a>
+                <a href="#" class="nav-link" onclick="showPage('neural')">
                     <i class="fas fa-brain"></i>
                     Neural MPC
                 </a>
-                <a href="#" class="nav-link">
-                    <i class="fas fa-chart-bar"></i>
-                    Analytics
+                <a href="#" class="nav-link" onclick="showPage('financial')">
+                    <i class="fas fa-dollar-sign"></i>
+                    Financial Analysis
                 </a>
-                <a href="#" class="nav-link">
-                    <i class="fas fa-cog"></i>
-                    Settings
+                <a href="#" class="nav-link" onclick="showPage('safety')">
+                    <i class="fas fa-shield-alt"></i>
+                    Safety & Compliance
                 </a>
             </div>
         </div>
 
         <!-- Main Content -->
         <div class="main-content">
-            <div class="header">
-                <h2>HE-NMPC Electrolyzer Control Dashboard</h2>
-                <div class="time-display" id="currentTime">14:30:02</div>
-            </div>
+            <!-- Dashboard Page -->
+            <div id="dashboard" class="page active">
+                <div class="header">
+                    <div class="header-title">
+                        <h1>HE-NMPC Electrolyzer Control Dashboard</h1>
+                        <p>Real-time PEM Electrolyzer Monitoring & Control with Hierarchical Economic Neural MPC</p>
+                    </div>
+                    <div class="header-actions">
+                        <div class="time-display" id="currentTime">14:30:02</div>
+                    </div>
+                </div>
 
-            <!-- Status Grid -->
-            <div class="status-grid">
-                <div class="status-card">
-                    <div class="status-header">
-                        <div class="status-title">System Status</div>
-                        <div class="status-icon">
-                            <i class="fas fa-check-circle"></i>
+                <!-- Status Grid -->
+                <div class="status-grid">
+                    <div class="status-card">
+                        <div class="status-header">
+                            <div class="status-title">System Status</div>
+                            <div class="status-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                        </div>
+                        <div class="status-value" id="systemStatus">OPERATIONAL</div>
+                        <div class="status-trend">
+                            <i class="fas fa-arrow-up"></i>
+                            All systems normal
                         </div>
                     </div>
-                    <div class="status-value" id="systemStatus">OPERATIONAL</div>
-                    <div class="status-trend">
-                        <i class="fas fa-arrow-up"></i>
-                        All systems normal
-                    </div>
-                </div>
-                <div class="status-card success">
-                    <div class="status-header">
-                        <div class="status-title">Production Rate</div>
-                        <div class="status-icon">
-                            <i class="fas fa-bolt"></i>
+                    <div class="status-card success">
+                        <div class="status-header">
+                            <div class="status-title">Production Rate</div>
+                            <div class="status-icon">
+                                <i class="fas fa-bolt"></i>
+                            </div>
+                        </div>
+                        <div class="status-value" id="productionRate">86.5%</div>
+                        <div class="status-trend">
+                            <i class="fas fa-arrow-up"></i>
+                            2.3% from last hour
                         </div>
                     </div>
-                    <div class="status-value" id="productionRate">86.5%</div>
-                    <div class="status-trend">
-                        <i class="fas fa-arrow-up"></i>
-                        2.3% from last hour
-                    </div>
-                </div>
-                <div class="status-card warning">
-                    <div class="status-header">
-                        <div class="status-title">Efficiency</div>
-                        <div class="status-icon">
-                            <i class="fas fa-tachometer-alt"></i>
+                    <div class="status-card warning">
+                        <div class="status-header">
+                            <div class="status-title">Efficiency</div>
+                            <div class="status-icon">
+                                <i class="fas fa-tachometer-alt"></i>
+                            </div>
+                        </div>
+                        <div class="status-value" id="efficiency">78.2%</div>
+                        <div class="status-trend">
+                            <i class="fas fa-arrow-up"></i>
+                            1.1% optimized
                         </div>
                     </div>
-                    <div class="status-value" id="efficiency">78.2%</div>
-                    <div class="status-trend">
-                        <i class="fas fa-arrow-up"></i>
-                        1.1% optimized
+                    <div class="status-card">
+                        <div class="status-header">
+                            <div class="status-title">Safety Margin</div>
+                            <div class="status-icon">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                        </div>
+                        <div class="status-value" id="safetyMargin">22.7%</div>
+                        <div class="status-trend">
+                            <i class="fas fa-check"></i>
+                            Within limits
+                        </div>
                     </div>
                 </div>
-                <div class="status-card">
-                    <div class="status-header">
-                        <div class="status-title">Safety Margin</div>
-                        <div class="status-icon">
+
+                <!-- MPC Comparison Section -->
+                <h2 class="section-title">
+                    <i class="fas fa-balance-scale"></i>
+                    MPC Performance Comparison
+                </h2>
+
+                <div class="comparison-grid">
+                    <div class="mpc-card he-nmpc featured">
+                        <div class="mpc-icon">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <div class="mpc-name">HE-NMPC</div>
+                        <div class="mpc-description">Hierarchical Economic Neural MPC with dual-layer optimization</div>
+                        <div class="mpc-score">94%</div>
+                        <div class="mpc-metrics">
+                            <div class="metric-item">
+                                <div class="metric-label">Economic</div>
+                                <div class="metric-value">96%</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Safety</div>
+                                <div class="metric-value">95%</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Speed</div>
+                                <div class="metric-value">91%</div>
+                            </div>
+                        </div>
+                        <div class="mpc-pros">
+                            <div class="pros-title">Advantages:</div>
+                            <ul class="pros-list">
+                                <li><i class="fas fa-check"></i> Dual-layer optimization</li>
+                                <li><i class="fas fa-check"></i> Neural network efficiency</li>
+                                <li><i class="fas fa-check"></i> Hard safety constraints</li>
+                                <li><i class="fas fa-check"></i> MCU compatible</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="mpc-card stochastic">
+                        <div class="mpc-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="mpc-name">Stochastic MPC</div>
+                        <div class="mpc-description">Probabilistic optimization with uncertainty handling</div>
+                        <div class="mpc-score">87%</div>
+                        <div class="mpc-metrics">
+                            <div class="metric-item">
+                                <div class="metric-label">Economic</div>
+                                <div class="metric-value">89%</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Safety</div>
+                                <div class="metric-value">85%</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Speed</div>
+                                <div class="metric-value">82%</div>
+                            </div>
+                        </div>
+                        <div class="mpc-pros">
+                            <div class="pros-title">Advantages:</div>
+                            <ul class="pros-list">
+                                <li><i class="fas fa-check"></i> Handles forecast uncertainty</li>
+                                <li><i class="fas fa-check"></i> Robust performance</li>
+                                <li><i class="fas fa-check"></i> Chance constraints</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="mpc-card mixed-integer">
+                        <div class="mpc-icon">
+                            <i class="fas fa-sitemap"></i>
+                        </div>
+                        <div class="mpc-name">Mixed-Integer MPC</div>
+                        <div class="mpc-description">Optimization with discrete and continuous decisions</div>
+                        <div class="mpc-score">82%</div>
+                        <div class="mpc-metrics">
+                            <div class="metric-item">
+                                <div class="metric-label">Economic</div>
+                                <div class="metric-value">84%</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Safety</div>
+                                <div class="metric-value">79%</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Speed</div>
+                                <div class="metric-value">76%</div>
+                            </div>
+                        </div>
+                        <div class="mpc-pros">
+                            <div class="pros-title">Advantages:</div>
+                            <ul class="pros-list">
+                                <li><i class="fas fa-check"></i> Discrete decision capture</li>
+                                <li><i class="fas fa-check"></i> Equipment on/off optimization</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="mpc-card standard">
+                        <div class="mpc-icon">
+                            <i class="fas fa-sliders-h"></i>
+                        </div>
+                        <div class="mpc-name">Standard MPC</div>
+                        <div class="mpc-description">Conventional model predictive control</div>
+                        <div class="mpc-score">76%</div>
+                        <div class="mpc-metrics">
+                            <div class="metric-item">
+                                <div class="metric-label">Economic</div>
+                                <div class="metric-value">78%</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Safety</div>
+                                <div class="metric-value">74%</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Speed</div>
+                                <div class="metric-value">72%</div>
+                            </div>
+                        </div>
+                        <div class="mpc-pros">
+                            <div class="pros-title">Advantages:</div>
+                            <ul class="pros-list">
+                                <li><i class="fas fa-check"></i> Established methodology</li>
+                                <li><i class="fas fa-check"></i> Wide tool support</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Grid -->
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div class="chart-title">MPC Performance Comparison Over Time</div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="performanceChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div class="chart-title">Cost Distribution Analysis</div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="costChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Control Panel -->
+                <div class="control-panel">
+                    <div class="chart-header">
+                        <div class="chart-title">HE-NMPC Control Parameters</div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">
+                            <i class="fas fa-chart-line"></i>
+                            Economic Optimization Setpoint (Upper Layer)
+                        </label>
+                        <div class="slider-container">
+                            <span>0%</span>
+                            <input type="range" min="0" max="100" value="75" class="slider" id="economicSetpoint">
+                            <span>100%</span>
+                            <span class="slider-value" id="economicValue">75%</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">
                             <i class="fas fa-shield-alt"></i>
+                            Safety Constraint Setpoint (Lower Layer)
+                        </label>
+                        <div class="slider-container">
+                            <span>0%</span>
+                            <input type="range" min="0" max="100" value="72" class="slider" id="safetySetpoint" disabled>
+                            <span>100%</span>
+                            <span class="slider-value" id="safetyValue">72%</span>
                         </div>
                     </div>
-                    <div class="status-value" id="safetyMargin">22.7%</div>
-                    <div class="status-trend">
-                        <i class="fas fa-check"></i>
-                        Within limits
-                    </div>
-                </div>
-            </div>
-
-            <!-- MPC Comparison -->
-            <div class="comparison-grid">
-                <div class="mpc-card he-nmpc featured">
-                    <div class="mpc-icon">
-                        <i class="fas fa-brain"></i>
-                    </div>
-                    <div class="mpc-name">HE-NMPC</div>
-                    <div class="mpc-score">94%</div>
-                    <div class="mpc-metrics">
-                        <div>
-                            <div>Economic</div>
-                            <div class="metric-value">96%</div>
-                        </div>
-                        <div>
-                            <div>Safety</div>
-                            <div class="metric-value">95%</div>
-                        </div>
-                        <div>
-                            <div>Speed</div>
-                            <div class="metric-value">91%</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="mpc-card stochastic">
-                    <div class="mpc-icon">
-                        <i class="fas fa-chart-line"></i>
-                    </div>
-                    <div class="mpc-name">Stochastic MPC</div>
-                    <div class="mpc-score">87%</div>
-                    <div class="mpc-metrics">
-                        <div>
-                            <div>Economic</div>
-                            <div class="metric-value">89%</div>
-                        </div>
-                        <div>
-                            <div>Safety</div>
-                            <div class="metric-value">85%</div>
-                        </div>
-                        <div>
-                            <div>Speed</div>
-                            <div class="metric-value">82%</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="mpc-card mixed-integer">
-                    <div class="mpc-icon">
-                        <i class="fas fa-sitemap"></i>
-                    </div>
-                    <div class="mpc-name">Mixed-Integer MPC</div>
-                    <div class="mpc-score">82%</div>
-                    <div class="mpc-metrics">
-                        <div>
-                            <div>Economic</div>
-                            <div class="metric-value">84%</div>
-                        </div>
-                        <div>
-                            <div>Safety</div>
-                            <div class="metric-value">79%</div>
-                        </div>
-                        <div>
-                            <div>Speed</div>
-                            <div class="metric-value">76%</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="mpc-card standard">
-                    <div class="mpc-icon">
-                        <i class="fas fa-sliders-h"></i>
-                    </div>
-                    <div class="mpc-name">Standard MPC</div>
-                    <div class="mpc-score">76%</div>
-                    <div class="mpc-metrics">
-                        <div>
-                            <div>Economic</div>
-                            <div class="metric-value">78%</div>
-                        </div>
-                        <div>
-                            <div>Safety</div>
-                            <div class="metric-value">74%</div>
-                        </div>
-                        <div>
-                            <div>Speed</div>
-                            <div class="metric-value">72%</div>
-                        </div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="sendUpperLayerCommand('RUN_OPTIMIZATION')">
+                            <i class="fas fa-play"></i>
+                            Run Economic Optimization
+                        </button>
+                        <button class="btn btn-outline" onclick="sendLowerLayerCommand('CALIBRATE_SENSORS')">
+                            <i class="fas fa-sync"></i>
+                            Calibrate Safety Layer
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Charts Grid -->
-            <div class="charts-grid">
+            <!-- Electrolyzer Page -->
+            <div id="electrolyzer" class="page">
+                <div class="header">
+                    <div class="header-title">
+                        <h1>Electrolyzer Control System</h1>
+                        <p>Real-time PEM Electrolyzer Monitoring and Control</p>
+                    </div>
+                    <div class="header-actions">
+                        <div class="time-display" id="electrolyzerTime">14:30:02</div>
+                    </div>
+                </div>
+                
+                <div class="status-grid">
+                    <div class="status-card">
+                        <div class="status-header">
+                            <div class="status-title">Stack Temperature</div>
+                            <div class="status-icon">
+                                <i class="fas fa-thermometer-half"></i>
+                            </div>
+                        </div>
+                        <div class="status-value">68.5°C</div>
+                        <div class="status-trend">
+                            <i class="fas fa-arrow-up"></i>
+                            Within optimal range
+                        </div>
+                    </div>
+                    <div class="status-card success">
+                        <div class="status-header">
+                            <div class="status-title">Oxygen Purity</div>
+                            <div class="status-icon">
+                                <i class="fas fa-wind"></i>
+                            </div>
+                        </div>
+                        <div class="status-value">99.6%</div>
+                        <div class="status-trend">
+                            <i class="fas fa-check"></i>
+                            Medical grade
+                        </div>
+                    </div>
+                    <div class="status-card">
+                        <div class="status-header">
+                            <div class="status-title">Water Level</div>
+                            <div class="status-icon">
+                                <i class="fas fa-tint"></i>
+                            </div>
+                        </div>
+                        <div class="status-value">85%</div>
+                        <div class="status-trend">
+                            <i class="fas fa-check"></i>
+                            Optimal
+                        </div>
+                    </div>
+                    <div class="status-card warning">
+                        <div class="status-header">
+                            <div class="status-title">Hydrogen Production</div>
+                            <div class="status-icon">
+                                <i class="fas fa-fire"></i>
+                            </div>
+                        </div>
+                        <div class="status-value">42.3 L/min</div>
+                        <div class="status-trend">
+                            <i class="fas fa-arrow-up"></i>
+                            By-product utilization
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div class="chart-title">Electrolyzer Performance Metrics</div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="electrolyzerChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div class="chart-title">Gas Production Rates</div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="gasProductionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="control-panel">
+                    <div class="chart-header">
+                        <div class="chart-title">Electrolyzer Control Parameters</div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">
+                            <i class="fas fa-bolt"></i>
+                            Current Density Setpoint
+                        </label>
+                        <div class="slider-container">
+                            <span>0 A/cm²</span>
+                            <input type="range" min="0" max="3" step="0.1" value="1.5" class="slider" id="currentDensity">
+                            <span>3 A/cm²</span>
+                            <span class="slider-value" id="currentDensityValue">1.5 A/cm²</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">
+                            <i class="fas fa-tint"></i>
+                            Water Flow Rate
+                        </label>
+                        <div class="slider-container">
+                            <span>0 L/min</span>
+                            <input type="range" min="0" max="20" value="12" class="slider" id="waterFlow">
+                            <span>20 L/min</span>
+                            <span class="slider-value" id="waterFlowValue">12 L/min</span>
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary">
+                            <i class="fas fa-play"></i>
+                            Start Production
+                        </button>
+                        <button class="btn btn-outline">
+                            <i class="fas fa-pause"></i>
+                            Pause System
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Page -->
+            <div id="analytics" class="page">
+                <div class="header">
+                    <div class="header-title">
+                        <h1>Performance Analytics</h1>
+                        <p>HE-NMPC vs Other MPC Methods - Comprehensive Analysis</p>
+                    </div>
+                    <div class="header-actions">
+                        <div class="time-display" id="analyticsTime">14:30:02</div>
+                    </div>
+                </div>
+                
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div class="chart-title">Economic Performance Comparison</div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="economicChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div class="chart-title">Safety Constraint Violations</div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="safetyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="chart-card">
                     <div class="chart-header">
-                        <div class="chart-title">Performance Comparison Over Time</div>
+                        <div class="chart-title">Computational Performance</div>
                     </div>
                     <div class="chart-container">
-                        <canvas id="performanceChart"></canvas>
+                        <canvas id="computationalChart"></canvas>
                     </div>
                 </div>
-                <div class="chart-card">
+                
+                <div class="control-panel">
                     <div class="chart-header">
-                        <div class="chart-title">Cost Distribution Analysis</div>
+                        <div class="chart-title">Analytics Configuration</div>
                     </div>
-                    <div class="chart-container">
-                        <canvas id="costChart"></canvas>
+                    <div class="btn-group">
+                        <button class="btn btn-primary">
+                            <i class="fas fa-download"></i>
+                            Export Data
+                        </button>
+                        <button class="btn btn-outline">
+                            <i class="fas fa-chart-bar"></i>
+                            Generate Report
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Control Panel -->
-            <div class="control-panel">
-                <div class="chart-header">
-                    <div class="chart-title">HE-NMPC Control Parameters</div>
-                </div>
-                <div class="control-group">
-                    <label class="control-label">Economic Optimization Setpoint (Upper Layer)</label>
-                    <div class="slider-container">
-                        <span>0%</span>
-                        <input type="range" min="0" max="100" value="75" class="slider" id="economicSetpoint">
-                        <span>100%</span>
-                        <span class="slider-value" id="economicValue">75%</span>
-                    </div>
-                </div>
-                <div class="control-group">
-                    <label class="control-label">Safety Constraint Setpoint (Lower Layer)</label>
-                    <div class="slider-container">
-                        <span>0%</span>
-                        <input type="range" min="0" max="100" value="72" class="slider" id="safetySetpoint" disabled>
-                        <span>100%</span>
-                        <span class="slider-value" id="safetyValue">72%</span>
-                    </div>
-                </div>
-                <div class="btn-group">
-                    <button class="btn btn-primary" onclick="sendUpperLayerCommand('RUN_OPTIMIZATION')">
-                        <i class="fas fa-play"></i>
-                        Run Economic Optimization
-                    </button>
-                    <button class="btn btn-outline" onclick="sendLowerLayerCommand('CALIBRATE_SENSORS')">
-                        <i class="fas fa-sync"></i>
-                        Calibrate Safety Layer
-                    </button>
-                </div>
-            </div>
+            <!-- Add other pages (neural, financial, safety) with similar structure -->
         </div>
     </div>
 
@@ -651,11 +1107,35 @@
     </div>
 
     <script>
+        // Configuration
+        const MQTT_CONFIG = {
+            broker: 'wss://broker.hivemq.com:8884/mqtt',
+            topics: {
+                data: 'electrolyzer/he-nmpc/data',
+                upper_commands: 'electrolyzer/he-nmpc/upper_commands',
+                lower_commands: 'electrolyzer/he-nmpc/lower_commands'
+            }
+        };
+
+        let mqttClient = null;
+        let charts = {};
+
+        // Page Navigation
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            event.target.classList.add('active');
+            
+            // Update time display for the active page
+            document.getElementById(pageId + 'Time').textContent = new Date().toLocaleTimeString();
+        }
+
         // Initialize Charts
         function initializeCharts() {
             // Performance Comparison Chart
             const performanceCtx = document.getElementById('performanceChart').getContext('2d');
-            new Chart(performanceCtx, {
+            charts.performanceChart = new Chart(performanceCtx, {
                 type: 'line',
                 data: {
                     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
@@ -719,7 +1199,7 @@
 
             // Cost Distribution Chart
             const costCtx = document.getElementById('costChart').getContext('2d');
-            new Chart(costCtx, {
+            charts.costChart = new Chart(costCtx, {
                 type: 'doughnut',
                 data: {
                     labels: ['HE-NMPC', 'Stochastic MPC', 'Mixed-Integer MPC', 'Standard MPC'],
@@ -757,20 +1237,235 @@
                     }
                 }
             });
+
+            // Initialize other charts for different pages
+            initializeElectrolyzerCharts();
+            initializeAnalyticsCharts();
+        }
+
+        function initializeElectrolyzerCharts() {
+            // Electrolyzer Performance Chart
+            const electrolyzerCtx = document.getElementById('electrolyzerChart').getContext('2d');
+            charts.electrolyzerChart = new Chart(electrolyzerCtx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                    datasets: [
+                        {
+                            label: 'Efficiency (%)',
+                            data: Array.from({length: 24}, () => Math.random() * 10 + 70),
+                            borderColor: '#1e88e5',
+                            backgroundColor: 'rgba(30, 136, 229, 0.1)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Stack Temperature (°C)',
+                            data: Array.from({length: 24}, () => Math.random() * 10 + 60),
+                            borderColor: '#f44336',
+                            backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Efficiency (%)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Temperature (°C)'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Gas Production Chart
+            const gasCtx = document.getElementById('gasProductionChart').getContext('2d');
+            charts.gasProductionChart = new Chart(gasCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+                    datasets: [
+                        {
+                            label: 'Oxygen Production (L/min)',
+                            data: [42, 45, 48, 52, 50, 46],
+                            backgroundColor: 'rgba(30, 136, 229, 0.7)',
+                            borderColor: 'rgb(30, 136, 229)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Hydrogen Production (L/min)',
+                            data: [21, 22.5, 24, 26, 25, 23],
+                            backgroundColor: 'rgba(255, 152, 0, 0.7)',
+                            borderColor: 'rgb(255, 152, 0)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Production Rate (L/min)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initializeAnalyticsCharts() {
+            // Economic Performance Chart
+            const economicCtx = document.getElementById('economicChart').getContext('2d');
+            charts.economicChart = new Chart(economicCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['HE-NMPC', 'Stochastic MPC', 'Mixed-Integer MPC', 'Standard MPC'],
+                    datasets: [
+                        {
+                            label: 'Cost Savings (%)',
+                            data: [28, 20, 12, 0],
+                            backgroundColor: 'rgba(30, 136, 229, 0.8)',
+                            borderColor: 'rgb(30, 136, 229)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'PV Utilization (%)',
+                            data: [92, 85, 78, 72],
+                            backgroundColor: 'rgba(76, 175, 80, 0.8)',
+                            borderColor: 'rgb(76, 175, 80)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Performance (%)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Safety Chart
+            const safetyCtx = document.getElementById('safetyChart').getContext('2d');
+            charts.safetyChart = new Chart(safetyCtx, {
+                type: 'radar',
+                data: {
+                    labels: ['Oxygen Purity', 'Pressure Limits', 'Temperature', 'Gas Leaks', 'Emergency Response'],
+                    datasets: [
+                        {
+                            label: 'HE-NMPC',
+                            data: [95, 98, 92, 96, 94],
+                            backgroundColor: 'rgba(30, 136, 229, 0.2)',
+                            borderColor: 'rgb(30, 136, 229)',
+                            pointBackgroundColor: 'rgb(30, 136, 229)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgb(30, 136, 229)'
+                        },
+                        {
+                            label: 'Standard MPC',
+                            data: [82, 85, 78, 80, 76],
+                            backgroundColor: 'rgba(117, 117, 117, 0.2)',
+                            borderColor: 'rgb(117, 117, 117)',
+                            pointBackgroundColor: 'rgb(117, 117, 117)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgb(117, 117, 117)'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: {
+                                display: true
+                            },
+                            suggestedMin: 50,
+                            suggestedMax: 100
+                        }
+                    }
+                }
+            });
+
+            // Computational Performance Chart
+            const computationalCtx = document.getElementById('computationalChart').getContext('2d');
+            charts.computationalChart = new Chart(computationalCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['HE-NMPC', 'Stochastic MPC', 'Mixed-Integer MPC', 'Standard MPC'],
+                    datasets: [
+                        {
+                            label: 'Computation Time (ms)',
+                            data: [45, 120, 280, 85],
+                            backgroundColor: [
+                                'rgba(30, 136, 229, 0.8)',
+                                'rgba(76, 175, 80, 0.8)',
+                                'rgba(255, 152, 0, 0.8)',
+                                'rgba(117, 117, 117, 0.8)'
+                            ],
+                            borderColor: [
+                                'rgb(30, 136, 229)',
+                                'rgb(76, 175, 80)',
+                                'rgb(255, 152, 0)',
+                                'rgb(117, 117, 117)'
+                            ],
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Computation Time (ms)'
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         // MQTT Functions
-        const MQTT_CONFIG = {
-            broker: 'wss://broker.hivemq.com:8884/mqtt',
-            topics: {
-                data: 'electrolyzer/he-nmpc/data',
-                upper_commands: 'electrolyzer/he-nmpc/upper_commands',
-                lower_commands: 'electrolyzer/he-nmpc/lower_commands'
-            }
-        };
-
-        let mqttClient = null;
-
         function connectMQTT() {
             try {
                 mqttClient = mqtt.connect(MQTT_CONFIG.broker, {
@@ -793,6 +1488,7 @@
 
             } catch (error) {
                 console.error('MQTT Connection Error:', error);
+                showNotification('MQTT Connection Failed', 'error');
             }
         }
 
@@ -806,6 +1502,8 @@
                 };
                 mqttClient.publish(MQTT_CONFIG.topics.upper_commands, JSON.stringify(message));
                 showNotification('Economic Optimization Started', 'success');
+            } else {
+                showNotification('MQTT Not Connected', 'error');
             }
         }
 
@@ -818,6 +1516,8 @@
                 };
                 mqttClient.publish(MQTT_CONFIG.topics.lower_commands, JSON.stringify(message));
                 showNotification('Safety Layer Calibration Initiated', 'success');
+            } else {
+                showNotification('MQTT Not Connected', 'error');
             }
         }
 
@@ -855,13 +1555,60 @@
 
             // Update time every second
             setInterval(() => {
-                document.getElementById('currentTime').textContent = new Date().toLocaleTimeString();
+                const now = new Date().toLocaleTimeString();
+                document.getElementById('currentTime').textContent = now;
+                
+                // Update time for active page if it has a time display
+                const activePage = document.querySelector('.page.active');
+                if (activePage) {
+                    const timeElement = document.getElementById(activePage.id + 'Time');
+                    if (timeElement) {
+                        timeElement.textContent = now;
+                    }
+                }
             }, 1000);
 
             // Slider event listeners
             document.getElementById('economicSetpoint').addEventListener('input', function(e) {
                 document.getElementById('economicValue').textContent = e.target.value + '%';
             });
+
+            document.getElementById('currentDensity').addEventListener('input', function(e) {
+                document.getElementById('currentDensityValue').textContent = e.target.value + ' A/cm²';
+            });
+
+            document.getElementById('waterFlow').addEventListener('input', function(e) {
+                document.getElementById('waterFlowValue').textContent = e.target.value + ' L/min';
+            });
+
+            // Simulate real-time data updates
+            setInterval(() => {
+                // Update production chart with new data point
+                if (charts.performanceChart) {
+                    const chart = charts.performanceChart;
+                    if (chart.data.datasets[0].data.length >= 20) {
+                        chart.data.labels.shift();
+                        chart.data.datasets.forEach(dataset => {
+                            dataset.data.shift();
+                        });
+                    }
+                    
+                    // Add new data point with some randomness
+                    const newLabels = [...chart.data.labels, new Date().toLocaleTimeString()];
+                    const newDataHE_NMPC = [...chart.data.datasets[0].data, 92 + Math.random() * 4];
+                    const newDataStochastic = [...chart.data.datasets[1].data, 85 + Math.random() * 4];
+                    const newDataMixedInt = [...chart.data.datasets[2].data, 80 + Math.random() * 4];
+                    const newDataStandard = [...chart.data.datasets[3].data, 75 + Math.random() * 4];
+                    
+                    chart.data.labels = newLabels;
+                    chart.data.datasets[0].data = newDataHE_NMPC;
+                    chart.data.datasets[1].data = newDataStochastic;
+                    chart.data.datasets[2].data = newDataMixedInt;
+                    chart.data.datasets[3].data = newDataStandard;
+                    
+                    chart.update('none');
+                }
+            }, 5000);
         });
     </script>
 </body>
