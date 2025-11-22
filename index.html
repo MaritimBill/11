@@ -3,598 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HE-NMPC Electrolyzer Control System</title>
+    <title>HE-NMPC Electrolyzer Control</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* ===== PROFESSIONAL BLUE THEME ===== */
-        * { 
-            margin: 0; padding: 0; box-sizing: border-box; 
-            font-family: 'Segoe UI', 'Inter', -apple-system, sans-serif;
-        }
-        
         :root {
-            --primary: #1e88e5; --primary-light: #64b5f6; --primary-dark: #1565c0;
+            --primary: #1e88e5; --primary-dark: #1565c0; --primary-light: #64b5f6;
             --primary-gradient: linear-gradient(135deg, #1e88e5, #1565c0);
-            --secondary: #546e7a; --success: #4caf50; --warning: #ff9800;
-            --danger: #f44336; --accent: #2196f3; --dark-blue: #0d47a1;
-            --light-bg: #f8fdff; --card-bg: #ffffff; --card-hover: #fafdff;
-            --text-dark: #263238; --text-light: #607d8b; --text-lighter: #90a4ae;
-            --border: #e3f2fd; --border-light: #f1f8ff;
-            --shadow: rgba(30, 136, 229, 0.08);
-            --shadow-hover: rgba(30, 136, 229, 0.15);
-            --glass: rgba(255, 255, 255, 0.9);
-        }
-        
-        body {
-            background: linear-gradient(135deg, #f8fdff 0%, #e3f2fd 100%);
-            color: var(--text-dark);
-            min-height: 100vh;
-            line-height: 1.6;
-        }
-        
-        /* ===== PROFESSIONAL NAVIGATION ===== */
-        .navbar {
-            background: var(--primary-gradient);
-            color: white;
-            padding: 1rem 2rem;
-            box-shadow: 0 4px 20px rgba(13, 71, 161, 0.15);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-        
-        .nav-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-        
-        .brand-icon {
-            width: 32px;
-            height: 32px;
-        }
-        
-        .brand-text {
-            font-size: 1.3rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #ffffff, #e3f2fd);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        
-        .nav-links {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-        }
-        
-        .nav-link {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1.25rem;
-            border-radius: 8px;
-            color: rgba(255, 255, 255, 0.9);
-            text-decoration: none;
-            transition: all 0.3s ease;
-            font-weight: 500;
-        }
-        
-        .nav-link:hover, .nav-link.active {
-            background: rgba(255, 255, 255, 0.15);
-            color: white;
-        }
-        
-        .nav-icon {
-            width: 18px;
-            height: 18px;
-        }
-        
-        /* ===== PAGE STRUCTURE ===== */
-        .page {
-            display: none;
-            padding: 2rem;
-        }
-        
-        .page.active {
-            display: block;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        
-        .page-header {
-            margin-bottom: 2.5rem;
-            text-align: center;
-        }
-        
-        .page-title {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: var(--text-dark);
-            margin-bottom: 0.75rem;
-            letter-spacing: -0.5px;
-        }
-        
-        .page-subtitle {
-            font-size: 1.1rem;
-            color: var(--text-light);
-            font-weight: 500;
-        }
-        
-        /* ===== STATUS BAR ===== */
-        .status-bar {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2.5rem;
-        }
-        
-        .status-card {
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 1.75rem;
-            text-align: center;
-            box-shadow: 0 4px 20px var(--shadow);
-            border: 1px solid var(--border);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .status-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--primary-gradient);
-        }
-        
-        .status-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 30px var(--shadow-hover);
-            border-color: var(--primary-light);
-        }
-        
-        .status-label {
-            color: var(--text-light);
-            font-size: 0.85rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 0.75rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-        
-        .status-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--text-dark);
-        }
-        
-        .status-value.optimizing { color: var(--primary); }
-        .status-value.connected { color: var(--success); }
-        .status-value.disconnected { color: var(--danger); }
-        
-        /* ===== DASHBOARD GRID ===== */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-        
-        @media (max-width: 1200px) {
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        /* ===== PROFESSIONAL PANELS ===== */
-        .panel {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 4px 25px var(--shadow);
-            transition: all 0.3s ease;
-            position: relative;
-        }
-        
-        .panel:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 35px var(--shadow-hover);
-        }
-        
-        .panel-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.75rem;
-            padding-bottom: 1.25rem;
-            border-bottom: 1px solid var(--border-light);
-        }
-        
-        .panel-icon {
-            width: 28px;
-            height: 28px;
-            color: var(--primary);
-            background: var(--primary-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        
-        .panel-title {
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: var(--text-dark);
-            letter-spacing: -0.5px;
-        }
-        
-        /* ===== CONTROL GROUPS ===== */
-        .control-group {
-            margin-bottom: 2rem;
-        }
-        
-        .control-label {
-            display: block;
-            margin-bottom: 1rem;
-            color: var(--text-dark);
-            font-weight: 600;
-            font-size: 1rem;
-        }
-        
-        .slider-container {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin: 1.25rem 0;
-        }
-        
-        .slider {
-            flex: 1;
-            height: 8px;
-            background: var(--border);
-            border-radius: 10px;
-            outline: none;
-            -webkit-appearance: none;
-            transition: all 0.3s ease;
-        }
-        
-        .slider:hover {
-            background: var(--primary-light);
-        }
-        
-        .slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 24px;
-            height: 24px;
-            background: var(--primary);
-            border-radius: 50%;
-            cursor: pointer;
-            border: 3px solid white;
-            box-shadow: 0 2px 8px rgba(30, 136, 229, 0.3);
-            transition: all 0.3s ease;
-        }
-        
-        .slider::-webkit-slider-thumb:hover {
-            transform: scale(1.1);
-            box-shadow: 0 4px 12px rgba(30, 136, 229, 0.4);
-        }
-        
-        .slider-value {
-            min-width: 70px;
-            text-align: center;
-            font-weight: 700;
-            color: var(--primary);
-            font-size: 1.1rem;
-            background: var(--primary-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        
-        /* ===== BUTTONS ===== */
-        .btn-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin: 1.5rem 0;
-        }
-        
-        .btn {
-            padding: 1.1rem 1.5rem;
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.75rem;
-            font-size: 0.95rem;
-            letter-spacing: 0.3px;
-        }
-        
-        .btn-primary {
-            background: var(--primary-gradient);
-            color: white;
-            box-shadow: 0 4px 15px rgba(30, 136, 229, 0.3);
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(30, 136, 229, 0.4);
-        }
-        
-        .btn-outline {
-            background: transparent;
-            border: 2px solid var(--border);
-            color: var(--text-dark);
-        }
-        
-        .btn-outline:hover {
-            border-color: var(--primary);
-            color: var(--primary);
-            transform: translateY(-2px);
-        }
-        
-        /* ===== PROCESS VISUALIZATION ===== */
-        .process-visualization {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 1.25rem;
-            margin: 2rem 0;
-        }
-        
-        .process-item {
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 1.75rem;
-            text-align: center;
-            border: 1px solid var(--border);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .process-item::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--primary-gradient);
-        }
-        
-        .process-item:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 25px var(--shadow);
-        }
-        
-        .process-value {
-            font-size: 2.2rem;
-            font-weight: 800;
-            color: var(--primary);
-            margin: 0.75rem 0;
-            background: var(--primary-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        
-        .process-label {
-            color: var(--text-light);
-            font-size: 0.9rem;
-            font-weight: 600;
-        }
-        
-        .gauge-label {
-            color: var(--success);
-            font-size: 0.8rem;
-            font-weight: 600;
-            margin-top: 0.5rem;
-        }
-        
-        /* ===== CHARTS CONTAINER ===== */
-        .chart-container {
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 1.75rem;
-            margin: 1.5rem 0;
-            box-shadow: 0 4px 20px var(--shadow);
-            border: 1px solid var(--border);
-        }
-        
-        .chart-title {
-            font-size: 1.2rem;
-            font-weight: 700;
-            margin-bottom: 1.25rem;
-            color: var(--text-dark);
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-        
-        .chart-wrapper {
-            position: relative;
-            height: 320px;
-            width: 100%;
-        }
-        
-        /* ===== PERFORMANCE COMPARISON GRID ===== */
-        .performance-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin: 2rem 0;
-        }
-        
-        .comparison-card {
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 2rem;
-            box-shadow: 0 4px 20px var(--shadow);
-            border: 1px solid var(--border);
-        }
-        
-        .comparison-header {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .comparison-title {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: var(--text-dark);
-        }
-        
-        /* ===== DATA GRID ===== */
-        .data-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-        
-        .data-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1.25rem;
-            background: var(--light-bg);
-            border-radius: 12px;
-            border: 1px solid var(--border-light);
-            transition: all 0.3s ease;
-        }
-        
-        .data-item:hover {
-            background: var(--card-hover);
-            transform: translateX(5px);
-        }
-        
-        .data-label {
-            color: var(--text-light);
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-        
-        .data-value {
-            font-weight: 700;
-            color: var(--text-dark);
-            font-size: 1rem;
-        }
-        
-        /* ===== NOTIFICATION ===== */
-        .notification {
-            position: fixed;
-            top: 25px;
-            right: 25px;
-            padding: 1.25rem 1.75rem;
-            background: var(--glass);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            color: var(--text-dark);
-            transform: translateX(400px);
-            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            max-width: 400px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-            backdrop-filter: blur(10px);
-        }
-        
-        .notification.show {
-            transform: translateX(0);
-        }
-        
-        .notification.success {
-            border-left: 4px solid var(--success);
-        }
-        
-        .notification.error {
-            border-left: 4px solid var(--danger);
-        }
-        
-        .notification.warning {
-            border-left: 4px solid var(--warning);
-        }
-        
-        .notification.info {
-            border-left: 4px solid var(--primary);
-        }
-        
-        /* ===== RESPONSIVE DESIGN ===== */
-        @media (max-width: 768px) {
-            .container { padding: 1rem; }
-            .nav-links { gap: 0.25rem; }
-            .nav-link { padding: 0.6rem 1rem; font-size: 0.8rem; }
-            .page-title { font-size: 2rem; }
-            .status-bar { grid-template-columns: 1fr 1fr; }
-            .performance-grid { grid-template-columns: 1fr; }
+            --secondary: #546e7a; --success: #4caf50; --warning: #ff9800; --danger: #f44336;
+            --card-bg: #ffffff; --light-bg: #f8fdff; --text-dark: #263238; --text-light: #607d8b;
+            --border: #e3f2fd; --shadow: rgba(30, 136, 229, 0.08); --shadow-hover: rgba(30, 136, 229, 0.15);
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: linear-gradient(135deg, #f8fdff 0%, #e3f2fd 100%); min-height: 100vh; }
+        
+        .navbar { background: var(--primary-gradient); padding: 1rem 2rem; color: white; box-shadow: 0 4px 20px rgba(13, 71, 161, 0.15); }
+        .nav-container { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .brand { display: flex; align-items: center; gap: 0.75rem; font-size: 1.3rem; font-weight: 700; }
+        .nav-links { display: flex; gap: 0.5rem; }
+        .nav-link { padding: 0.75rem 1.25rem; color: rgba(255,255,255,0.9); text-decoration: none; border-radius: 8px; transition: all 0.3s; }
+        .nav-link:hover, .nav-link.active { background: rgba(255,255,255,0.15); }
+        
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .page-header { text-align: center; margin-bottom: 2.5rem; }
+        .page-title { font-size: 2.5rem; font-weight: 800; color: var(--text-dark); margin-bottom: 0.75rem; }
+        .page-subtitle { font-size: 1.1rem; color: var(--text-light); }
+        
+        .status-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem; }
+        .status-card { background: var(--card-bg); border-radius: 16px; padding: 1.75rem; text-align: center; box-shadow: 0 4px 20px var(--shadow); border: 1px solid var(--border); transition: all 0.3s; }
+        .status-card:hover { transform: translateY(-5px); box-shadow: 0 8px 30px var(--shadow-hover); }
+        .status-label { color: var(--text-light); font-size: 0.85rem; font-weight: 600; margin-bottom: 0.75rem; }
+        .status-value { font-size: 2rem; font-weight: 700; }
+        
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+        @media (max-width: 1200px) { .dashboard-grid { grid-template-columns: 1fr; } }
+        
+        .panel { background: var(--card-bg); border-radius: 20px; padding: 2rem; box-shadow: 0 4px 25px var(--shadow); border: 1px solid var(--border); transition: all 0.3s; }
+        .panel:hover { transform: translateY(-2px); box-shadow: 0 8px 35px var(--shadow-hover); }
+        .panel-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.75rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border); }
+        .panel-title { font-size: 1.4rem; font-weight: 700; color: var(--text-dark); }
+        
+        .control-group { margin-bottom: 2rem; }
+        .control-label { display: block; margin-bottom: 1rem; color: var(--text-dark); font-weight: 600; }
+        .slider-container { display: flex; align-items: center; gap: 1rem; margin: 1.25rem 0; }
+        .slider { flex: 1; height: 8px; background: var(--border); border-radius: 10px; -webkit-appearance: none; }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; background: var(--primary); border-radius: 50%; cursor: pointer; border: 3px solid white; box-shadow: 0 2px 8px rgba(30,136,229,0.3); }
+        .slider-value { min-width: 70px; text-align: center; font-weight: 700; color: var(--primary); }
+        
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0; }
+        .btn { padding: 1.1rem 1.5rem; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 0.75rem; }
+        .btn-primary { background: var(--primary-gradient); color: white; box-shadow: 0 4px 15px rgba(30,136,229,0.3); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(30,136,229,0.4); }
+        .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--text-dark); }
+        .btn-outline:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-2px); }
+        
+        .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 2rem 0; }
+        .chart-container { background: var(--card-bg); border-radius: 16px; padding: 1.75rem; box-shadow: 0 4px 20px var(--shadow); border: 1px solid var(--border); }
+        .chart-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 1.25rem; color: var(--text-dark); }
+        .chart-wrapper { position: relative; height: 300px; width: 100%; }
+        
+        .notification { position: fixed; top: 25px; right: 25px; padding: 1.25rem 1.75rem; background: white; border-radius: 14px; transform: translateX(400px); transition: all 0.4s; z-index: 1000; box-shadow: 0 8px 30px rgba(0,0,0,0.12); display: flex; align-items: center; gap: 1rem; }
+        .notification.show { transform: translateX(0); }
+        .notification.success { border-left: 4px solid var(--success); }
+        .notification.error { border-left: 4px solid var(--danger); }
+        
+        @media (max-width: 768px) { 
+            .container { padding: 1rem; } 
+            .dashboard-grid, .chart-grid { grid-template-columns: 1fr; }
             .btn-group { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
-    <!-- Navigation -->
     <nav class="navbar">
         <div class="nav-container">
-            <div class="brand">
-                <svg class="brand-icon" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M19.14,7.5A2.86,2.86 0 0,1 22,10.36V14.14A2.86,2.86 0 0,1 19.14,17H12L9.17,19.83A2.82,2.82 0 0,1 6.34,21H5.86A2.86,2.86 0 0,1 3,18.14V5.86A2.86,2.86 0 0,1 5.86,3H18.14A2.86,2.86 0 0,1 21,5.86V7.5H19.14Z"/>
-                </svg>
-                <span class="brand-text">HE-NMPC Electrolyzer Control</span>
-            </div>
+            <div class="brand">HE-NMPC Electrolyzer Control</div>
             <div class="nav-links">
-                <a href="#" class="nav-link active" onclick="showPage('dashboard')">
-                    <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
-                    </svg>
-                    Dashboard
-                </a>
-                <a href="#" class="nav-link" onclick="showPage('electrolyzer')">
-                    <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
-                    </svg>
-                    Electrolyzer
-                </a>
-                <a href="#" class="nav-link" onclick="showPage('analytics')">
-                    <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
-                    </svg>
-                    Analytics
-                </a>
-                <a href="#" class="nav-link" onclick="showPage('neural')">
-                    <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>
-                    </svg>
-                    Neural MPC
-                </a>
+                <a href="#" class="nav-link active" onclick="showPage('dashboard')">Dashboard</a>
+                <a href="#" class="nav-link" onclick="showPage('electrolyzer')">Electrolyzer</a>
+                <a href="#" class="nav-link" onclick="showPage('analytics')">Analytics</a>
             </div>
         </div>
     </nav>
 
-    <!-- Dashboard Page -->
     <div id="dashboard" class="page active">
         <div class="container">
             <div class="page-header">
@@ -602,220 +96,68 @@
                 <p class="page-subtitle">Real-time PEM Electrolyzer Monitoring & Control</p>
             </div>
 
-            <!-- Status Bar -->
             <div class="status-bar">
-                <div class="status-card">
-                    <div class="status-label">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                        </svg>
-                        System Status
-                    </div>
-                    <div class="status-value connected" id="systemStatus">RUNNING</div>
-                </div>
-                <div class="status-card">
-                    <div class="status-label">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                        </svg>
-                        HE-NMPC Mode
-                    </div>
-                    <div class="status-value optimizing" id="nmpcStatus">ACTIVE</div>
-                </div>
-                <div class="status-card">
-                    <div class="status-label">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M13 2.05v3.03c3.39.49 6 3.39 6 6.92 0 .9-.18 1.75-.5 2.54l2.62 1.53c.56-1.24.88-2.62.88-4.07 0-5.18-3.95-9.45-9-9.95zM12 19c-3.87 0-7-3.13-7-7 0-3.53 2.61-6.43 6-6.92V2.05c-5.06.5-9 4.76-9 9.95 0 5.52 4.47 10 9.99 10 3.31 0 6.24-1.61 8.06-4.09l-2.6-1.53C16.17 17.98 14.21 19 12 19z"/>
-                        </svg>
-                        Production Rate
-                    </div>
-                    <div class="status-value" id="productionRate">42.3%</div>
-                </div>
-                <div class="status-card">
-                    <div class="status-label">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
-                        </svg>
-                        Efficiency
-                    </div>
-                    <div class="status-value" id="efficiency">78.5%</div>
-                </div>
-                <div class="status-card">
-                    <div class="status-label">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
-                        </svg>
-                        Safety Margin
-                    </div>
-                    <div class="status-value" id="safetyMargin">15.2%</div>
-                </div>
-                <div class="status-card">
-                    <div class="status-label">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
-                        </svg>
-                        Last Update
-                    </div>
-                    <div class="status-value" id="lastUpdate">14:30:02</div>
-                </div>
+                <div class="status-card"><div class="status-label">System Status</div><div class="status-value" style="color:var(--success)">RUNNING</div></div>
+                <div class="status-card"><div class="status-label">HE-NMPC Mode</div><div class="status-value" style="color:var(--primary)">ACTIVE</div></div>
+                <div class="status-card"><div class="status-label">Production Rate</div><div class="status-value" id="productionRate">42.3%</div></div>
+                <div class="status-card"><div class="status-label">Efficiency</div><div class="status-value" id="efficiency">78.5%</div></div>
+                <div class="status-card"><div class="status-label">Safety Margin</div><div class="status-value" id="safetyMargin">15.2%</div></div>
+                <div class="status-card"><div class="status-label">Last Update</div><div class="status-value" id="lastUpdate">14:30:02</div></div>
             </div>
 
             <div class="dashboard-grid">
-                <!-- Control Panel -->
                 <div class="panel">
-                    <div class="panel-header">
-                        <svg class="panel-icon" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91 1.91.46 4.18 1.28 4.18 3.67 0 1.89-1.2 2.96-3.12 3.29z"/>
-                        </svg>
-                        <h2 class="panel-title">Economic Control</h2>
-                    </div>
-
+                    <div class="panel-header"><h2 class="panel-title">Economic Control</h2></div>
                     <div class="control-group">
                         <label class="control-label">Economic Setpoint (Upper Layer)</label>
-                        <div class="slider-container">
-                            <span>0%</span>
-                            <input type="range" min="0" max="100" value="45" class="slider" id="economicSetpoint">
-                            <span>100%</span>
-                        </div>
+                        <div class="slider-container"><span>0%</span><input type="range" min="0" max="100" value="45" class="slider" id="economicSetpoint"><span>100%</span></div>
                         <div class="slider-value" id="economicValue">45%</div>
                     </div>
-
                     <div class="control-group">
                         <label class="control-label">Safety Setpoint (Lower Layer)</label>
-                        <div class="slider-container">
-                            <span>0%</span>
-                            <input type="range" min="0" max="100" value="42" class="slider" id="safetySetpoint" disabled>
-                            <span>100%</span>
-                        </div>
+                        <div class="slider-container"><span>0%</span><input type="range" min="0" max="100" value="42" class="slider" id="safetySetpoint" disabled><span>100%</span></div>
                         <div class="slider-value" id="safetyValue">42%</div>
                     </div>
-
                     <div class="btn-group">
-                        <button class="btn btn-primary" onclick="sendUpperLayerCommand('RUN_OPTIMIZATION')">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M8 5v14l11-7z"/>
-                            </svg>
-                            RUN OPTIMIZATION
-                        </button>
-                        <button class="btn btn-outline" onclick="sendLowerLayerCommand('CALIBRATE_SENSORS')">
-                            CALIBRATE SENSORS
-                        </button>
+                        <button class="btn btn-primary" onclick="sendUpperLayerCommand('RUN_OPTIMIZATION')">RUN OPTIMIZATION</button>
+                        <button class="btn btn-outline" onclick="sendLowerLayerCommand('CALIBRATE_SENSORS')">CALIBRATE SENSORS</button>
                     </div>
                 </div>
 
-                <!-- Process Visualization -->
                 <div class="panel">
-                    <div class="panel-header">
-                        <svg class="panel-icon" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
-                        </svg>
-                        <h2 class="panel-title">Process Overview</h2>
-                    </div>
-
-                    <div class="process-visualization">
-                        <div class="process-item">
-                            <div class="process-label">Water Level</div>
-                            <div class="process-value" id="waterLevel">72%</div>
-                            <div class="gauge-label">Optimal</div>
-                        </div>
-                        <div class="process-item">
-                            <div class="process-label">Stack Temp</div>
-                            <div class="process-value" id="stackTemp">68°C</div>
-                            <div class="gauge-label">Safe</div>
-                        </div>
-                        <div class="process-item">
-                            <div class="process-label">Oxygen Purity</div>
-                            <div class="process-value" id="oxygenPurity">99.6%</div>
-                            <div class="gauge-label">Excellent</div>
-                        </div>
-                        <div class="process-item">
-                            <div class="process-label">H₂ Production</div>
-                            <div class="process-value" id="hydrogenProd">85%</div>
-                            <div class="gauge-label">Good</div>
-                        </div>
-                    </div>
-
-                    <!-- Real-time Production Chart -->
-                    <div class="chart-container">
-                        <div class="chart-title">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
-                            </svg>
-                            Production Rate Trend
-                        </div>
-                        <div class="chart-wrapper">
-                            <canvas id="productionChart"></canvas>
-                        </div>
-                    </div>
+                    <div class="panel-header"><h2 class="panel-title">Process Overview</h2></div>
+                    <div class="chart-wrapper"><canvas id="processChart"></canvas></div>
                 </div>
             </div>
 
-            <!-- Performance Comparison Section -->
-            <div class="performance-grid">
-                <!-- MPC Performance Comparison -->
-                <div class="comparison-card">
-                    <div class="comparison-header">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
-                        </svg>
-                        <h3 class="comparison-title">MPC Performance Comparison</h3>
-                    </div>
-                    <div class="chart-wrapper">
-                        <canvas id="mpcComparisonChart"></canvas>
-                    </div>
+            <div class="chart-grid">
+                <div class="chart-container">
+                    <div class="chart-title">MPC Performance Comparison</div>
+                    <div class="chart-wrapper"><canvas id="performanceChart"></canvas></div>
                 </div>
-
-                <!-- Financial Performance -->
-                <div class="comparison-card">
-                    <div class="comparison-header">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>
-                        </svg>
-                        <h3 class="comparison-title">Financial Performance</h3>
-                    </div>
-                    <div class="chart-wrapper">
-                        <canvas id="financialChart"></canvas>
-                    </div>
+                <div class="chart-container">
+                    <div class="chart-title">Financial Performance</div>
+                    <div class="chart-wrapper"><canvas id="financialChart"></canvas></div>
                 </div>
-            </div>
-
-            <!-- Additional Charts -->
-            <div class="dashboard-grid">
-                <div class="panel">
-                    <div class="panel-header">
-                        <svg class="panel-icon" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
-                        </svg>
-                        <h2 class="panel-title">Efficiency Trends</h2>
-                    </div>
-                    <div class="chart-wrapper">
-                        <canvas id="efficiencyChart"></canvas>
-                    </div>
+                <div class="chart-container">
+                    <div class="chart-title">Cost Distribution</div>
+                    <div class="chart-wrapper"><canvas id="costChart"></canvas></div>
                 </div>
-
-                <div class="panel">
-                    <div class="panel-header">
-                        <svg class="panel-icon" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>
-                        </svg>
-                        <h2 class="panel-title">Cost Analysis</h2>
-                    </div>
-                    <div class="chart-wrapper">
-                        <canvas id="costChart"></canvas>
-                    </div>
+                <div class="chart-container">
+                    <div class="chart-title">Efficiency Trends</div>
+                    <div class="chart-wrapper"><canvas id="efficiencyChart"></canvas></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Other Pages (Simplified for brevity) -->
     <div id="electrolyzer" class="page">
         <div class="container">
             <div class="page-header">
-                <h1 class="page-title">PEM Electrolyzer Detailed View</h1>
-                <p class="page-subtitle">Real-time Process Parameters & Control</p>
+                <h1 class="page-title">Electrolyzer Detailed View</h1>
+                <p class="page-subtitle">Real-time Process Parameters</p>
             </div>
-            <!-- Electrolyzer content -->
+            <!-- Additional electrolyzer content -->
         </div>
     </div>
 
@@ -823,32 +165,18 @@
         <div class="container">
             <div class="page-header">
                 <h1 class="page-title">Performance Analytics</h1>
-                <p class="page-subtitle">HE-NMPC vs Other MPC Methods</p>
+                <p class="page-subtitle">HE-NMPC vs Other Methods</p>
             </div>
-            <!-- Analytics content -->
+            <!-- Additional analytics content -->
         </div>
     </div>
 
-    <div id="neural" class="page">
-        <div class="container">
-            <div class="page-header">
-                <h1 class="page-title">Neural Economic MPC</h1>
-                <p class="page-subtitle">Upper Layer - Economic Optimization with Neural Networks</p>
-            </div>
-            <!-- Neural MPC content -->
-        </div>
-    </div>
-
-    <!-- Notification -->
     <div class="notification" id="notification">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-        </svg>
         <span id="notificationText">HE-NMPC System Ready</span>
     </div>
 
     <script>
-        // ===== CORE JAVASCRIPT =====
+        // Configuration
         const MQTT_CONFIG = {
             broker: 'wss://broker.hivemq.com:8884/mqtt',
             topics: { 
@@ -870,8 +198,8 @@
 
         // Initialize Charts
         function initializeCharts() {
-            // Production Chart
-            charts.productionChart = new Chart(document.getElementById('productionChart'), {
+            // Process Overview Chart
+            charts.processChart = new Chart(document.getElementById('processChart'), {
                 type: 'line',
                 data: {
                     labels: Array.from({length: 20}, (_, i) => `${i}s`),
@@ -897,8 +225,8 @@
                 }
             });
 
-            // MPC Comparison Chart
-            charts.mpcComparisonChart = new Chart(document.getElementById('mpcComparisonChart'), {
+            // Performance Comparison Chart
+            charts.performanceChart = new Chart(document.getElementById('performanceChart'), {
                 type: 'bar',
                 data: {
                     labels: ['HE-NMPC', 'Stochastic MPC', 'Mixed-Integer MPC', 'Standard MPC'],
@@ -930,7 +258,7 @@
                 }
             });
 
-            // Financial Chart
+            // Financial Performance Chart
             charts.financialChart = new Chart(document.getElementById('financialChart'), {
                 type: 'line',
                 data: {
@@ -966,7 +294,33 @@
                 }
             });
 
-            // Initialize other charts...
+            // Cost Distribution Pie Chart
+            charts.costChart = new Chart(document.getElementById('costChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Electricity', 'Maintenance', 'Water', 'Other'],
+                    datasets: [{
+                        data: [65, 15, 12, 8],
+                        backgroundColor: [
+                            'rgba(30, 136, 229, 0.8)',
+                            'rgba(76, 175, 80, 0.8)',
+                            'rgba(3, 169, 244, 0.8)',
+                            'rgba(255, 152, 0, 0.8)'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+
+            // Efficiency Trends Chart
             charts.efficiencyChart = new Chart(document.getElementById('efficiencyChart'), {
                 type: 'line',
                 data: {
@@ -988,35 +342,13 @@
                     }
                 }
             });
-
-            charts.costChart = new Chart(document.getElementById('costChart'), {
-                type: 'bar',
-                data: {
-                    labels: ['Electricity', 'Maintenance', 'Water', 'Other'],
-                    datasets: [{
-                        label: 'Cost Distribution',
-                        data: [65, 15, 12, 8],
-                        backgroundColor: [
-                            'rgba(30, 136, 229, 0.8)',
-                            'rgba(76, 175, 80, 0.8)',
-                            'rgba(3, 169, 244, 0.8)',
-                            'rgba(255, 152, 0, 0.8)'
-                        ]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false
-                }
-            });
         }
 
         // MQTT Functions
         function connectMQTT() {
             try {
                 mqttClient = mqtt.connect(MQTT_CONFIG.broker, {
-                    clientId: 'he-nmpc-dashboard-' + Math.random().toString(16).substr(2, 8),
-                    clean: true
+                    clientId: 'he-nmpc-dashboard-' + Math.random().toString(16).substr(2, 8)
                 });
 
                 mqttClient.on('connect', () => {
@@ -1058,9 +390,6 @@
                 document.getElementById('safetySetpoint').value = data.production;
             }
             if (data.efficiency !== undefined) document.getElementById('efficiency').textContent = data.efficiency.toFixed(1) + '%';
-            if (data.purity !== undefined) document.getElementById('oxygenPurity').textContent = data.purity.toFixed(1) + '%';
-            if (data.chamber !== undefined) document.getElementById('stackTemp').textContent = data.chamber.toFixed(1) + '°C';
-            if (data.water !== undefined) document.getElementById('waterLevel').textContent = data.water.toFixed(1) + '%';
         }
 
         // Notification system
@@ -1082,7 +411,6 @@
             document.getElementById('economicSetpoint').addEventListener('input', function(e) {
                 const value = e.target.value;
                 document.getElementById('economicValue').textContent = value + '%';
-                // Send command to upper layer
                 if (isConnected) {
                     const message = { 
                         command: 'SET_SETPOINT', 
@@ -1096,8 +424,8 @@
 
             // Simulate real-time data updates
             setInterval(() => {
-                if (charts.productionChart) {
-                    const chart = charts.productionChart;
+                if (charts.processChart) {
+                    const chart = charts.processChart;
                     if (chart.data.datasets[0].data.length >= 20) {
                         chart.data.datasets[0].data.shift();
                     }
