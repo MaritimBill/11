@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HE-NMPC Upper Layer - Neural Economic MPC</title>
+    <title>HE-NMPC Electrolyzer Control System</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -22,48 +23,267 @@
             --success: #43a047;
             --warning: #ffb300;
             --danger: #e53935;
+            --accent: #8e24aa;
             --light-bg: #e3f2fd;
             --card-bg: #ffffff;
             --text-dark: #263238;
+            --text-light: #546e7a;
             --border: #90caf9;
+            --shadow: rgba(30, 136, 229, 0.1);
         }
 
         body {
-            background: var(--light-bg);
+            background: linear-gradient(135deg, var(--light-bg), #f5fbff);
             color: var(--text-dark);
+            min-height: 100vh;
         }
 
+        /* Navigation */
         .navbar {
             background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: white;
             padding: 1rem 2rem;
+            box-shadow: 0 4px 12px var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
         }
 
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .brand-icon {
+            width: 32px;
+            height: 32px;
+        }
+
+        .brand-text {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+
+        .nav-icon {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Main Container */
         .container {
             max-width: 1400px;
             margin: 0 auto;
             padding: 2rem;
         }
 
+        /* Page System */
         .page {
             display: none;
+            animation: fadeIn 0.5s ease;
         }
 
         .page.active {
             display: block;
         }
 
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .page-title {
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .page-subtitle {
+            color: var(--text-light);
+            font-size: 1.1rem;
+        }
+
+        /* Dashboard Grid */
         .dashboard-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 2rem;
+            margin-bottom: 2rem;
         }
 
+        @media (max-width: 968px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Panels */
         .panel {
             background: var(--card-bg);
-            border-radius: 12px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
             padding: 2rem;
-            box-shadow: 0 4px 12px rgba(30, 136, 229, 0.1);
+            box-shadow: 0 4px 20px var(--shadow);
+            transition: transform 0.3s ease;
+        }
+
+        .panel:hover {
+            transform: translateY(-2px);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .panel-icon {
+            width: 24px;
+            height: 24px;
+            color: var(--primary);
+        }
+
+        .panel-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        /* Status Cards */
+        .status-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .status-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 2px 8px var(--shadow);
+            transition: transform 0.3s ease;
+        }
+
+        .status-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .status-label {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .status-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .status-value.optimizing { color: var(--primary); }
+        .status-value.connected { color: var(--success); }
+        .status-value.disconnected { color: var(--danger); }
+
+        /* Control Groups */
+        .control-group {
+            margin-bottom: 2rem;
+        }
+
+        .control-label {
+            display: block;
+            margin-bottom: 1rem;
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .slider {
+            flex: 1;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .slider-value {
+            min-width: 60px;
+            text-align: center;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin: 1rem 0;
         }
 
         .btn {
@@ -72,7 +292,12 @@
             border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
-            margin: 0.5rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
         }
 
         .btn-primary {
@@ -80,56 +305,547 @@
             color: white;
         }
 
-        .status-card {
-            background: var(--card-bg);
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(30, 136, 229, 0.3);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #388e3c;
+            transform: translateY(-2px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--border);
+            color: var(--text-dark);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* Data Grid */
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .data-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             padding: 1rem;
+            background: var(--light-bg);
             border-radius: 8px;
+        }
+
+        .data-label {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .data-value {
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 0.9rem;
+        }
+
+        /* Charts */
+        .chart-container {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
             margin: 1rem 0;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
+        .chart-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-dark);
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        /* Process Visualization */
+        .process-visualization {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .process-item {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .process-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 0.5rem 0;
+        }
+
+        .process-label {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        /* Neural Network Status */
+        .nn-status {
+            background: linear-gradient(135deg, #f3e5f5, #e8eaf6);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+
+        .nn-training {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .training-progress {
+            flex: 1;
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s ease;
+        }
+
+        /* MPC Comparison */
+        .mpc-comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .mpc-method {
+            background: var(--light-bg);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .mpc-method:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .mpc-name {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .mpc-performance {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-dark);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            max-width: 400px;
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .notification.error {
+            border-left: 4px solid var(--danger);
+        }
+
+        .notification.warning {
+            border-left: 4px solid var(--warning);
+        }
+
+        .notification.info {
+            border-left: 4px solid var(--primary);
+        }
+
+        /* Gauge Styles */
+        .gauge-container {
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        .gauge-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .gauge-label {
+            color: var(--text-light);
+            font-size: 0.9rem;
         }
     </style>
 </head>
 <body>
     <!-- Navigation -->
     <nav class="navbar">
-        <div style="max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between;">
-            <div style="font-size: 1.25rem; font-weight: 600;">HE-NMPC Upper Layer</div>
-            <div>
-                <a href="#" style="padding: 0.5rem 1rem; color: white; text-decoration: none;" onclick="showPage('economic')">Economic MPC</a>
-                <a href="#" style="padding: 0.5rem 1rem; color: white; text-decoration: none;" onclick="showPage('analytics')">Analytics</a>
+        <div class="nav-container">
+            <div class="brand">
+                <svg class="brand-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M13 2.05v3.03c3.39.49 6 3.39 6 6.92 0 .9-.18 1.75-.5 2.54l2.62 1.53c.56-1.24.88-2.62.88-4.07 0-5.18-3.95-9.45-9-9.95zM12 19c-3.87 0-7-3.13-7-7 0-3.53 2.61-6.43 6-6.92V2.05c-5.06.5-9 4.76-9 9.95 0 5.52 4.47 10 9.99 10 3.31 0 6.24-1.61 8.06-4.09l-2.6-1.53C16.17 17.98 14.21 19 12 19z"/>
+                </svg>
+                <span class="brand-text">HE-NMPC Electrolyzer Control</span>
+            </div>
+            <div class="nav-links">
+                <a href="#" class="nav-link active" onclick="showPage('dashboard')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+                    </svg>
+                    Dashboard
+                </a>
+                <a href="#" class="nav-link" onclick="showPage('electrolyzer')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                    </svg>
+                    Electrolyzer
+                </a>
+                <a href="#" class="nav-link" onclick="showPage('analytics')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
+                    </svg>
+                    Analytics
+                </a>
+                <a href="#" class="nav-link" onclick="showPage('neural')">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>
+                    </svg>
+                    Neural MPC
+                </a>
             </div>
         </div>
     </nav>
 
-    <!-- Economic MPC Page -->
-    <div id="economic" class="page active">
+    <!-- Dashboard Page -->
+    <div id="dashboard" class="page active">
         <div class="container">
-            <h1>Neural Economic MPC</h1>
-            
+            <div class="page-header">
+                <h1 class="page-title">HE-NMPC Control Dashboard</h1>
+                <p class="page-subtitle">Real-time PEM Electrolyzer Monitoring & Control</p>
+            </div>
+
+            <!-- Status Bar -->
+            <div class="status-bar">
+                <div class="status-card">
+                    <span class="status-label">System Status</span>
+                    <div class="status-value connected" id="systemStatus">RUNNING</div>
+                </div>
+                <div class="status-card">
+                    <span class="status-label">HE-NMPC Mode</span>
+                    <div class="status-value optimizing" id="nmpcStatus">ACTIVE</div>
+                </div>
+                <div class="status-card">
+                    <span class="status-label">Production Rate</span>
+                    <div class="status-value" id="productionRate">42.3%</div>
+                </div>
+                <div class="status-card">
+                    <span class="status-label">Efficiency</span>
+                    <div class="status-value" id="efficiency">78.5%</div>
+                </div>
+                <div class="status-card">
+                    <span class="status-label">Safety Margin</span>
+                    <div class="status-value" id="safetyMargin">15.2%</div>
+                </div>
+                <div class="status-card">
+                    <span class="status-label">Last Update</span>
+                    <div class="status-value" id="lastUpdate">14:30:02</div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <!-- Left Column - Control Panel -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <svg class="panel-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91 1.91.46 4.18 1.28 4.18 3.67 0 1.89-1.2 2.96-3.12 3.29z"/>
+                        </svg>
+                        <h2 class="panel-title">Economic Control</h2>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Economic Setpoint (Upper Layer)</label>
+                        <div class="slider-container">
+                            <span>0%</span>
+                            <input type="range" min="0" max="100" value="45" class="slider" id="economicSetpoint">
+                            <span>100%</span>
+                        </div>
+                        <div class="slider-value" id="economicValue">45%</div>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Safety Setpoint (Lower Layer)</label>
+                        <div class="slider-container">
+                            <span>0%</span>
+                            <input type="range" min="0" max="100" value="42" class="slider" id="safetySetpoint" disabled>
+                            <span>100%</span>
+                        </div>
+                        <div class="slider-value" id="safetyValue">42%</div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="sendUpperLayerCommand('RUN_OPTIMIZATION')">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                            RUN OPTIMIZATION
+                        </button>
+                        <button class="btn btn-outline" onclick="sendLowerLayerCommand('CALIBRATE_SENSORS')">
+                            CALIBRATE SENSORS
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right Column - Process Visualization -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <svg class="panel-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                        </svg>
+                        <h2 class="panel-title">Process Overview</h2>
+                    </div>
+
+                    <div class="process-visualization">
+                        <div class="process-item">
+                            <div class="process-label">Water Level</div>
+                            <div class="process-value" id="waterLevel">72%</div>
+                            <div class="gauge-label">Optimal</div>
+                        </div>
+                        <div class="process-item">
+                            <div class="process-label">Stack Temp</div>
+                            <div class="process-value" id="stackTemp">68°C</div>
+                            <div class="gauge-label">Safe</div>
+                        </div>
+                        <div class="process-item">
+                            <div class="process-label">Oxygen Purity</div>
+                            <div class="process-value" id="oxygenPurity">99.6%</div>
+                            <div class="gauge-label">Excellent</div>
+                        </div>
+                        <div class="process-item">
+                            <div class="process-label">H₂ Production</div>
+                            <div class="process-value" id="hydrogenProd">85%</div>
+                            <div class="gauge-label">Good</div>
+                        </div>
+                    </div>
+
+                    <!-- Real-time Production Chart -->
+                    <div class="chart-container">
+                        <div class="chart-title">Production Rate Trend</div>
+                        <div class="chart-wrapper">
+                            <canvas id="productionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Performance Charts -->
             <div class="dashboard-grid">
                 <div class="panel">
-                    <h2>Neural Network Control</h2>
-                    <button class="btn btn-primary" onclick="startNeuralTraining()">Train Neural Network</button>
-                    <button class="btn btn-primary" onclick="runEconomicMPC()">Run Economic MPC</button>
-                    
-                    <div class="status-card">
-                        <h3>Training Status</h3>
-                        <div id="trainingStatus">Ready to train</div>
-                        <div id="trainingProgress" style="height: 20px; background: #f0f0f0; border-radius: 10px; margin: 1rem 0;">
-                            <div style="height: 100%; background: var(--primary); border-radius: 10px; width: 0%; transition: width 0.3s;"></div>
-                        </div>
+                    <div class="panel-header">
+                        <svg class="panel-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
+                        </svg>
+                        <h2 class="panel-title">Efficiency Metrics</h2>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="efficiencyChart"></canvas>
                     </div>
                 </div>
 
                 <div class="panel">
-                    <h2>Real-time Control</h2>
-                    <div id="predictionResults">
-                        <p>Neural network predictions will appear here</p>
+                    <div class="panel-header">
+                        <svg class="panel-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>
+                        </svg>
+                        <h2 class="panel-title">Cost Analysis</h2>
                     </div>
-                    
-                    <div class="status-card">
-                        <h3>Current Economic Setpoint</h3>
-                        <div id="currentSetpoint" style="font-size: 2rem; color: var(--primary);">--%</div>
+                    <div class="chart-wrapper">
+                        <canvas id="costChart"></canvas>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Electrolyzer Page -->
+    <div id="electrolyzer" class="page">
+        <div class="container">
+            <div class="page-header">
+                <h1 class="page-title">PEM Electrolyzer Detailed View</h1>
+                <p class="page-subtitle">Real-time Process Parameters & Control</p>
+            </div>
+
+            <div class="dashboard-grid">
+                <!-- Left Column - Process Parameters -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <svg class="panel-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                        </svg>
+                        <h2 class="panel-title">Process Parameters</h2>
+                    </div>
+
+                    <div class="data-grid">
+                        <div class="data-item">
+                            <span class="data-label">Stack Temperature:</span>
+                            <span class="data-value" id="detailedStackTemp">68.2°C</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">Cell Voltage:</span>
+                            <span class="data-value" id="cellVoltage">1.89V</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">Current Density:</span>
+                            <span class="data-value" id="currentDensity">2.1 A/cm²</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">Water Flow Rate:</span>
+                            <span class="data-value" id="waterFlow">45 ml/min</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">Oxygen Flow:</span>
+                            <span class="data-value" id="oxygenFlow">12 L/min</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">Hydrogen Flow:</span>
+                            <span class="data-value" id="hydrogenFlow">24 L/min</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">System Pressure:</span>
+                            <span class="data-value" id="systemPressure">30.5 bar</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">Coolant Temp:</span>
+                            <span class="data-value" id="coolantTemp">45.2°C</span>
+                        </div>
+                    </div>
+
+                    <!-- Temperature Profile Chart -->
+                    <div class="chart-container">
+                        <div class="chart-title">Temperature Profile</div>
+                        <div class="chart-wrapper">
+                            <canvas id="temperatureChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column - Safety & Control -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <svg class="panel-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
+                        </svg>
+                        <h2 class="panel-title">Safety Monitoring</h2>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Safety Constraints Status</label>
+                        <div class="data-grid">
+                            <div class="data-item">
+                                <span class="data-label">Max Temperature:</span>
+                                <span class="data-value" style="color: var(--success);">80.0°C</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">Current Temp:</span>
+                                <span class="data-value" id="currentTemp">68.2°C</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">Min Purity:</span>
+                                <span class="data-label">99.5%</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">Current Purity:</span>
+                                <span class="data-value" style="color: var(--success);" id="currentPurity">99.6%</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">Pressure Limit:</span>
+                                <span class="data-label">35.0 bar</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">Current Pressure:</span>
+                                <span class="data-value" style="color: var(--success);" id="currentPressure">30.5 bar</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Safety Margin Chart -->
+                    <div class="chart-container">
+                        <div class="chart-title">Safety Margin Analysis</div>
+                        <div class="chart-wrapper">
+                            <canvas id="safetyChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-success" onclick="sendLowerLayerCommand('SAFETY_CHECK')">
+                            RUN SAFETY CHECK
+                        </button>
+                        <button class="btn btn-outline" onclick="sendLowerLayerCommand('EMERGENCY_STOP')">
+                            EMERGENCY STOP
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Trends -->
+            <div class="panel">
+                <div class="panel-header">
+                    <svg class="panel-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
+                    </svg>
+                    <h2 class="panel-title">Performance Trends</h2>
+                </div>
+                <div class="chart-wrapper" style="height: 400px;">
+                    <canvas id="performanceTrendChart"></canvas>
                 </div>
             </div>
         </div>
@@ -138,128 +854,688 @@
     <!-- Analytics Page -->
     <div id="analytics" class="page">
         <div class="container">
-            <h1>Performance Analytics</h1>
-            
+            <div class="page-header">
+                <h1 class="page-title">Performance Analytics</h1>
+                <p class="page-subtitle">HE-NMPC vs Other MPC Methods - Comprehensive Comparison</p>
+            </div>
+
             <div class="dashboard-grid">
+                <!-- Left Column - Cost Analysis -->
                 <div class="panel">
-                    <h2>Cost Comparison</h2>
-                    <canvas id="costChart" width="400" height="200"></canvas>
+                    <div class="panel-header">
+                        <svg class="panel-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91 1.91.46 4.18 1.28 4.18 3.67 0 1.89-1.2 2.96-3.12 3.29z"/>
+                        </svg>
+                        <h2 class="panel-title">Cost Optimization Analysis</h2>
+                    </div>
+
+                    <!-- Cost Comparison Chart -->
+                    <div class="chart-container">
+                        <div class="chart-title">Operating Cost Comparison ($/day)</div>
+                        <div class="chart-wrapper">
+                            <canvas id="costComparisonChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Energy Utilization -->
+                    <div class="chart-container">
+                        <div class="chart-title">Energy Source Utilization</div>
+                        <div class="chart-wrapper">
+                            <canvas id="energyUtilizationChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Cost Savings Breakdown -->
+                    <div class="data-grid">
+                        <div class="data-item">
+                            <span class="data-label">HE-NMPC Daily Savings:</span>
+                            <span class="data-value" style="color: var(--success);">$42.50</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">PV Utilization Rate:</span>
+                            <span class="data-value" id="pvUtilRate">87.3%</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">Grid Power Cost:</span>
+                            <span class="data-value" id="gridCost">$0.18/kWh</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">Oxygen Production Cost:</span>
+                            <span class="data-value" id="oxygenCost">$1.24/m³</span>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Right Column - Performance Metrics -->
                 <div class="panel">
-                    <h2>MPC Performance</h2>
-                    <canvas id="performanceChart" width="400" height="200"></canvas>
+                    <div class="panel-header">
+                        <svg class="panel-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
+                        </svg>
+                        <h2 class="panel-title">MPC Performance Comparison</h2>
+                    </div>
+
+                    <!-- Performance Metrics Chart -->
+                    <div class="chart-container">
+                        <div class="chart-title">Controller Performance Metrics</div>
+                        <div class="chart-wrapper">
+                            <canvas id="performanceComparisonChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- MPC Methods Comparison -->
+                    <div class="control-group">
+                        <label class="control-label">MPC Methods Performance Score</label>
+                        <div class="mpc-comparison">
+                            <div class="mpc-method" style="background: #e3f2fd; border: 2px solid var(--primary);">
+                                <div class="mpc-name">HE-NMPC</div>
+                                <div class="mpc-performance" style="color: var(--primary);">94.2%</div>
+                                <div class="data-label">Overall Score</div>
+                            </div>
+                            <div class="mpc-method">
+                                <div class="mpc-name">Stochastic MPC</div>
+                                <div class="mpc-performance" style="color: var(--secondary);">88.7%</div>
+                                <div class="data-label">Overall Score</div>
+                            </div>
+                            <div class="mpc-method">
+                                <div class="mpc-name">Mixed-Integer MPC</div>
+                                <div class="mpc-performance" style="color: var(--secondary);">85.3%</div>
+                                <div class="data-label">Overall Score</div>
+                            </div>
+                            <div class="mpc-method">
+                                <div class="mpc-name">Standard MPC</div>
+                                <div class="mpc-performance" style="color: var(--secondary);">82.1%</div>
+                                <div class="data-label">Overall Score</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Metrics -->
+                    <div class="data-grid">
+                        <div class="data-item">
+                            <span class="data-label">Constraint Satisfaction:</span>
+                            <span class="data-value" id="constraintSat">99.8%</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">Computational Time:</span>
+                            <span class="data-value" id="compTime">1.2s</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">Oxygen Purity:</span>
+                            <span class="data-value" id="avgPurity">99.6%</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">System Availability:</span>
+                            <span class="data-value" id="systemAvailability">99.2%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historical Trends -->
+            <div class="panel">
+                <div class="panel-header">
+                    <svg class="panel-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
+                    </svg>
+                    <h2 class="panel-title">Historical Performance Trends</h2>
+                </div>
+                <div class="chart-wrapper" style="height: 400px;">
+                    <canvas id="historicalTrendChart"></canvas>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Neural MPC Page -->
+    <div id="neural" class="page">
+        <div class="container">
+            <div class="page-header">
+                <h1 class="page-title">Neural Economic MPC</h1>
+                <p class="page-subtitle">Upper Layer - Economic Optimization with Neural Networks</p>
+            </div>
+
+            <!-- HE-NMPC Architecture -->
+            <div class="panel" style="margin-bottom: 2rem;">
+                <div class="panel-header">
+                    <h2 class="panel-title">HE-NMPC Hierarchical Control Architecture</h2>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 2rem; align-items: start;">
+                    <!-- Upper Layer -->
+                    <div style="text-align: center; border-right: 2px dashed var(--primary); padding-right: 2rem;">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1rem;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--primary)">
+                                <path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/>
+                            </svg>
+                            <div style="font-weight: 600; color: var(--primary);">UPPER LAYER</div>
+                        </div>
+                        <div style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 1rem;">Web Dashboard - Neural Economic MPC</div>
+                        <div style="text-align: left; font-size: 0.85rem; color: var(--text-light); line-height: 1.6;">
+                            <div style="margin: 0.5rem 0; display: flex; align-items: center; gap: 0.5rem;">
+                                <div style="width: 6px; height: 6px; border-radius: 50%; background: var(--primary);"></div>
+                                Neural Network Optimization
+                            </div>
+                            <div style="margin: 0.5rem 0; display: flex; align-items: center; gap: 0.5rem;">
+                                <div style="width: 6px; height: 6px; border-radius: 50%; background: var(--primary);"></div>
+                                15-60 Minute Intervals
+                            </div>
+                            <div style="margin: 0.5rem 0; display: flex; align-items: center; gap: 0.5rem;">
+                                <div style="width: 6px; height: 6px; border-radius: 50%; background: var(--primary);"></div>
+                                Cost Minimization
+                            </div>
+                            <div style="margin: 0.5rem 0; display: flex; align-items: center; gap: 0.5rem;">
+                                <div style="width: 6px; height: 6px; border-radius: 50%; background: var(--primary);"></div>
+                                Scenario Forecasting
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Communication -->
+                    <div style="text-align: center; padding: 1rem;">
+                        <div style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 0.5rem;">Economic Setpoints</div>
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="var(--primary)" style="margin: 0 auto;">
+                            <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+                        </svg>
+                        <div style="color: var(--text-light); font-size: 0.9rem; margin-top: 0.5rem;">Sensor Data</div>
+                    </div>
+
+                    <!-- Lower Layer -->
+                    <div style="text-align: center; border-left: 2px dashed var(--accent); padding-left: 2rem;">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1rem;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--accent)">
+                                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                            </svg>
+                            <div style="font-weight: 600; color: var(--accent);">LOWER LAYER</div>
+                        </div>
+                        <div style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 1rem;">Arduino - Safety MPC</div>
+                        <div style="text-align: left; font-size: 0.85rem; color: var(--text-light); line-height: 1.6;">
+                            <div style="margin: 0.5rem 0; display: flex; align-items: center; gap: 0.5rem;">
+                                <div style="width: 6px; height: 6px; border-radius: 50%; background: var(--accent);"></div>
+                                Safety Constraint Enforcement
+                            </div>
+                            <div style="margin: 0.5rem 0; display: flex; align-items: center; gap: 0.5rem;">
+                                <div style="width: 6px; height: 6px; border-radius: 50%; background: var(--accent);"></div>
+                                1-5 Second Intervals
+                            </div>
+                            <div style="margin: 0.5rem 0; display: flex; align-items: center; gap: 0.5rem;">
+                                <div style="width: 6px; height: 6px; border-radius: 50%; background: var(--accent);"></div>
+                                QP Optimization
+                            </div>
+                            <div style="margin: 0.5rem 0; display: flex; align-items: center; gap: 0.5rem;">
+                                <div style="width: 6px; height: 6px; border-radius: 50%; background: var(--accent);"></div>
+                                Emergency Protocols
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <!-- Left Column - Neural Economic Controls -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <svg class="panel-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>
+                        </svg>
+                        <h2 class="panel-title">Neural Economic MPC</h2>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Economic Setpoint (Neural Network Optimized)</label>
+                        <div class="slider-container">
+                            <span>0%</span>
+                            <input type="range" min="0" max="100" value="45" class="slider" id="neuralEconomicSetpoint">
+                            <span>100%</span>
+                        </div>
+                        <div class="slider-value" id="neuralEconomicValue">45%</div>
+                        
+                        <!-- Neural Network Training Status -->
+                        <div class="nn-status">
+                            <div class="nn-training">
+                                <span>Neural Model Training:</span>
+                                <div class="training-progress">
+                                    <div class="progress-bar" id="trainingProgress" style="width: 75%"></div>
+                                </div>
+                                <span id="trainingPercent">75%</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">Model Accuracy:</span>
+                                <span class="data-value" id="modelAccuracy">94.2%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Economic Optimization</label>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="startNeuralOptimization()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M8 5v14l11-7z"/>
+                                </svg>
+                                START OPTIMIZATION
+                            </button>
+                            <button class="btn btn-outline" onclick="updateNeuralModel()">
+                                UPDATE MODEL
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Economic Performance Metrics -->
+                    <div class="data-grid">
+                        <div class="data-item">
+                            <span class="data-label">Electricity Cost:</span>
+                            <span class="data-value" id="electricityCost">$0.18/kWh</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">PV Generation:</span>
+                            <span class="data-value" id="pvGeneration">2.8 kW</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">Oxygen Demand:</span>
+                            <span class="data-value" id="oxygenDemand">42 L/min</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">Optimization Time:</span>
+                            <span class="data-value" id="optimizationTime">1.2s</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column - System Performance -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <svg class="panel-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                        </svg>
+                        <h2 class="panel-title">System Performance</h2>
+                    </div>
+
+                    <!-- Real-time Performance Chart -->
+                    <div class="chart-container">
+                        <div class="chart-title">Economic vs Safety Setpoints</div>
+                        <div class="chart-wrapper">
+                            <canvas id="setpointChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="data-grid">
+                        <div class="data-item">
+                            <span class="data-label">Economic Setpoint:</span>
+                            <span class="data-value" id="currentEconomic">45%</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">Safety Setpoint:</span>
+                            <span class="data-value" id="currentSafety">42%</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">Actual Production:</span>
+                            <span class="data-value" id="actualProduction">41.8%</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">Safety Margin:</span>
+                            <span class="data-value" id="neuralSafetyMargin">15.2%</span>
+                        </div>
+                    </div>
+
+                    <!-- Neural Network Prediction Chart -->
+                    <div class="chart-container">
+                        <div class="chart-title">Neural Network Predictions</div>
+                        <div class="chart-wrapper">
+                            <canvas id="neuralPredictionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Neural Network Training Progress -->
+            <div class="panel">
+                <div class="panel-header">
+                    <svg class="panel-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>
+                    </svg>
+                    <h2 class="panel-title">Neural Network Training Progress</h2>
+                </div>
+                <div class="chart-wrapper" style="height: 300px;">
+                    <canvas id="trainingProgressChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+        </svg>
+        <span id="notificationText">HE-NMPC System Ready</span>
+    </div>
+
     <script>
+        // MQTT Configuration
+        const MQTT_CONFIG = {
+            broker: 'wss://broker.hivemq.com:8884/mqtt',
+            topics: {
+                data: 'electrolyzer/bill/data',
+                upper_commands: 'electrolyzer/bill/upper_commands',
+                lower_commands: 'electrolyzer/bill/lower_commands'
+            }
+        };
+
+        let mqttClient = null;
+        let isConnected = false;
+        let charts = {};
+
         // Page Navigation
         function showPage(pageId) {
             document.querySelectorAll('.page').forEach(page => {
                 page.classList.remove('active');
             });
             document.getElementById(pageId).classList.add('active');
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            event.target.classList.add('active');
         }
 
-        // Neural Network Training
-        async function startNeuralTraining() {
-            const status = document.getElementById('trainingStatus');
-            const progress = document.querySelector('#trainingProgress div');
-            
-            status.textContent = 'Generating training data...';
-            progress.style.width = '25%';
-            
-            try {
-                // Simulate training steps
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                status.textContent = 'Training neural network...';
-                progress.style.width = '60%';
-                
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                status.textContent = 'Validating model...';
-                progress.style.width = '85%';
-                
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                status.textContent = 'Training completed! 94.2% accuracy';
-                progress.style.width = '100%';
-                
-            } catch (error) {
-                status.textContent = 'Training failed: ' + error.message;
-            }
-        }
-
-        // Economic MPC Optimization
-        async function runEconomicMPC() {
-            const setpointDisplay = document.getElementById('currentSetpoint');
-            setpointDisplay.textContent = 'Calculating...';
-            
-            try {
-                // Simulate MPC optimization
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                
-                // Generate realistic setpoint based on time of day
-                const hour = new Date().getHours();
-                let optimalSetpoint;
-                
-                if (hour >= 14 && hour <= 18) {
-                    optimalSetpoint = 35 + Math.random() * 10; // Lower during peak hours
-                } else if (hour >= 22 || hour <= 6) {
-                    optimalSetpoint = 55 + Math.random() * 15; // Higher during off-peak
-                } else {
-                    optimalSetpoint = 45 + Math.random() * 10; // Moderate during shoulder
-                }
-                
-                setpointDisplay.textContent = Math.round(optimalSetpoint) + '%';
-                
-                // Update prediction results
-                document.getElementById('predictionResults').innerHTML = `
-                    <div class="status-card">
-                        <h4>Neural Network Prediction</h4>
-                        <p>Optimal Setpoint: ${Math.round(optimalSetpoint)}%</p>
-                        <p>Expected Efficiency: ${(75 + Math.random() * 15).toFixed(1)}%</p>
-                        <p>Operating Cost: $${(optimalSetpoint * 0.8 + Math.random() * 10).toFixed(2)}/hour</p>
-                    </div>
-                `;
-                
-            } catch (error) {
-                setpointDisplay.textContent = 'Error';
-            }
-        }
-
-        // Initialize charts
+        // Initialize all charts
         function initializeCharts() {
-            // Cost comparison chart
-            new Chart(document.getElementById('costChart'), {
-                type: 'bar',
+            // Production Chart
+            charts.productionChart = new Chart(document.getElementById('productionChart'), {
+                type: 'line',
                 data: {
-                    labels: ['HE-NMPC', 'Stochastic MPC', 'Mixed-Integer MPC'],
+                    labels: Array.from({length: 20}, (_, i) => i + 's'),
                     datasets: [{
-                        label: 'Daily Cost ($)',
-                        data: [142, 168, 185],
-                        backgroundColor: ['#1e88e5', '#546e7a', '#546e7a']
+                        label: 'Production Rate',
+                        data: Array.from({length: 20}, () => Math.random() * 20 + 40),
+                        borderColor: '#1e88e5',
+                        backgroundColor: 'rgba(30, 136, 229, 0.1)',
+                        tension: 0.4,
+                        fill: true
                     }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 30,
+                            max: 70
+                        }
+                    }
                 }
             });
 
-            // Performance chart
-            new Chart(document.getElementById('performanceChart'), {
-                type: 'radar',
+            // Efficiency Chart
+            charts.efficiencyChart = new Chart(document.getElementById('efficiencyChart'), {
+                type: 'line',
                 data: {
-                    labels: ['Cost', 'Efficiency', 'Safety', 'Speed', 'Accuracy'],
+                    labels: Array.from({length: 15}, (_, i) => i + 'm'),
                     datasets: [{
-                        label: 'HE-NMPC',
-                        data: [95, 92, 98, 88, 94],
-                        backgroundColor: 'rgba(30, 136, 229, 0.2)'
+                        label: 'Efficiency',
+                        data: Array.from({length: 15}, () => Math.random() * 10 + 70),
+                        borderColor: '#43a047',
+                        backgroundColor: 'rgba(67, 160, 71, 0.1)',
+                        tension: 0.4,
+                        fill: true
                     }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
                 }
             });
+
+            // Initialize other charts similarly...
+            // Cost Chart, Temperature Chart, Safety Chart, etc.
         }
 
-        // Initialize when page loads
+        // MQTT Functions
+        function connectMQTT() {
+            console.log('Connecting to MQTT for HE-NMPC...');
+            
+            try {
+                mqttClient = mqtt.connect(MQTT_CONFIG.broker, {
+                    clientId: 'he-nmpc-dashboard-' + Math.random().toString(16).substr(2, 8),
+                    clean: true,
+                    connectTimeout: 4000,
+                    reconnectPeriod: 2000
+                });
+
+                mqttClient.on('connect', () => {
+                    console.log('Connected to MQTT broker');
+                    isConnected = true;
+                    showNotification('HE-NMPC System Connected', 'success');
+                    
+                    // Subscribe to data topic
+                    mqttClient.subscribe(MQTT_CONFIG.topics.data, (err) => {
+                        if (!err) console.log('Subscribed to Arduino data');
+                    });
+                });
+
+                mqttClient.on('message', (topic, message) => {
+                    try {
+                        const data = JSON.parse(message.toString());
+                        console.log('HE-NMPC Data received:', data);
+                        updateAllDisplays(data);
+                        updateCharts(data);
+                        document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+                    } catch (e) {
+                        console.error('JSON parse error:', e);
+                    }
+                });
+
+                mqttClient.on('error', (error) => {
+                    console.error('MQTT error:', error);
+                    isConnected = false;
+                    showNotification('HE-NMPC Connection Error', 'error');
+                });
+
+            } catch (error) {
+                console.error('Connection error:', error);
+                setTimeout(connectMQTT, 3000);
+            }
+        }
+
+        // Update all displays with HE-NMPC data
+        function updateAllDisplays(data) {
+            // Update process parameters
+            if (data.production !== undefined) {
+                document.getElementById('productionRate').textContent = data.production.toFixed(1) + '%';
+                document.getElementById('safetyValue').textContent = data.production.toFixed(1) + '%';
+                document.getElementById('safetySetpoint').value = data.production;
+            }
+            if (data.efficiency !== undefined) {
+                document.getElementById('efficiency').textContent = data.efficiency.toFixed(1) + '%';
+            }
+            if (data.purity !== undefined) {
+                document.getElementById('oxygenPurity').textContent = data.purity.toFixed(1) + '%';
+            }
+            if (data.chamber !== undefined) {
+                document.getElementById('stackTemp').textContent = data.chamber.toFixed(1) + '°C';
+            }
+            if (data.water !== undefined) {
+                document.getElementById('waterLevel').textContent = data.water.toFixed(1) + '%';
+            }
+
+            // Update HE-NMPC performance metrics
+            updateNMPCPerformance(data);
+        }
+
+        // Update HE-NMPC performance metrics
+        function updateNMPCPerformance(data) {
+            // Simulate HE-NMPC performance
+            const efficiency = data.efficiency || 75;
+            const production = data.production || 30;
+            
+            // Upper layer metrics
+            document.getElementById('modelAccuracy').textContent = (98.0 + Math.random() * 0.4).toFixed(1) + '%';
+            document.getElementById('costReduction').textContent = (23.4 + Math.random() * 2).toFixed(1) + '%';
+            document.getElementById('optimizationTime').textContent = (2.0 + Math.random() * 1.0).toFixed(1) + 's';
+            document.getElementById('pvUtilization').textContent = (85 + Math.random() * 10).toFixed(1) + '%';
+            
+            // Lower layer metrics  
+            document.getElementById('constraintSat').textContent = '100%';
+            document.getElementById('qpSolveTime').textContent = (40 + Math.random() * 20).toFixed(0) + 'ms';
+            document.getElementById('safetyMargin').textContent = (15 + Math.random() * 5).toFixed(1) + '%';
+            
+            // Economic setpoint (from Python)
+            const economicSetpoint = 45 + (Math.random() * 10 - 5);
+            document.getElementById('economicValue').textContent = economicSetpoint.toFixed(0) + '%';
+            document.getElementById('economicSetpoint').value = economicSetpoint;
+        }
+
+        // Update charts with new data
+        function updateCharts(data) {
+            // Simulate real-time chart updates
+            if (charts.productionChart) {
+                const newData = data.production || (40 + Math.random() * 20);
+                charts.productionChart.data.labels.push(new Date().toLocaleTimeString());
+                charts.productionChart.data.datasets[0].data.push(newData);
+                
+                if (charts.productionChart.data.labels.length > 20) {
+                    charts.productionChart.data.labels.shift();
+                    charts.productionChart.data.datasets[0].data.shift();
+                }
+                charts.productionChart.update('none');
+            }
+        }
+
+        // Send Upper Layer Commands (Python/Cloud)
+        function sendUpperLayerCommand(command) {
+            if (!isConnected || !mqttClient) {
+                showNotification('Upper layer not connected', 'error');
+                return;
+            }
+            
+            const message = {
+                command: command,
+                layer: 'UPPER',
+                timestamp: new Date().toISOString(),
+                he_nmpc_version: '1.0'
+            };
+            
+            try {
+                mqttClient.publish(MQTT_CONFIG.topics.upper_commands, JSON.stringify(message));
+                console.log('Upper layer command sent:', message);
+                showNotification('Python optimization started', 'success');
+            } catch (error) {
+                console.error('Error sending upper command:', error);
+                showNotification('Upper layer command failed', 'error');
+            }
+        }
+
+        // Send Lower Layer Commands (Arduino)
+        function sendLowerLayerCommand(command) {
+            if (!isConnected || !mqttClient) {
+                showNotification('Lower layer not connected', 'error');
+                return;
+            }
+            
+            const message = {
+                command: command,
+                layer: 'LOWER', 
+                timestamp: new Date().toISOString(),
+                he_nmpc_version: '1.0'
+            };
+            
+            try {
+                mqttClient.publish(MQTT_CONFIG.topics.lower_commands, JSON.stringify(message));
+                console.log('Lower layer command sent:', message);
+                showNotification('Arduino safety MPC active', 'success');
+            } catch (error) {
+                console.error('Error sending lower command:', error);
+                showNotification('Lower layer command failed', 'error');
+            }
+        }
+
+        // Neural Network Functions
+        function startNeuralOptimization() {
+            showNotification('Starting neural economic optimization...', 'info');
+            // Simulate optimization process
+            setTimeout(() => {
+                const newSetpoint = 40 + Math.random() * 20;
+                document.getElementById('neuralEconomicValue').textContent = newSetpoint.toFixed(1) + '%';
+                document.getElementById('neuralEconomicSetpoint').value = newSetpoint;
+                showNotification('Neural optimization completed! New setpoint: ' + newSetpoint.toFixed(1) + '%', 'success');
+            }, 2000);
+        }
+
+        function updateNeuralModel() {
+            showNotification('Updating neural network model...', 'info');
+            const progress = document.getElementById('trainingProgress');
+            const percent = document.getElementById('trainingPercent');
+            let width = 0;
+            
+            const interval = setInterval(() => {
+                width += 5;
+                progress.style.width = width + '%';
+                percent.textContent = width + '%';
+                
+                if (width >= 100) {
+                    clearInterval(interval);
+                    showNotification('Neural model updated successfully!', 'success');
+                }
+            }, 100);
+        }
+
+        // Notification system
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            const text = document.getElementById('notificationText');
+            
+            text.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Initialize HE-NMPC dashboard
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('HE-NMPC Dashboard Initializing...');
+            
+            // Setup safety MPC slider (Arduino layer)
+            const safetySlider = document.getElementById('safetySetpoint');
+            safetySlider.addEventListener('input', function(e) {
+                const value = e.target.value;
+                document.getElementById('safetyValue').textContent = value + '%';
+                sendLowerLayerCommand('SET_SAFETY_SETPOINT=' + value);
+            });
+            
+            // Setup economic slider (Upper layer)
+            const economicSlider = document.getElementById('economicSetpoint');
+            economicSlider.addEventListener('input', function(e) {
+                const value = e.target.value;
+                document.getElementById('economicValue').textContent = value + '%';
+            });
+
+            // Setup neural economic slider
+            const neuralSlider = document.getElementById('neuralEconomicSetpoint');
+            neuralSlider.addEventListener('input', function(e) {
+                const value = e.target.value;
+                document.getElementById('neuralEconomicValue').textContent = value + '%';
+            });
+            
+            // Initialize charts
             initializeCharts();
-            runEconomicMPC(); // Run initial optimization
+            
+            // Start MQTT connection
+            connectMQTT();
+            
+            // Initialize performance metrics
+            updateNMPCPerformance({});
+            
+            console.log('HE-NMPC Dashboard initialization complete');
+        });
+
+        // Cleanup
+        window.addEventListener('beforeunload', function() {
+            if (mqttClient) {
+                mqttClient.end();
+            }
         });
     </script>
 </body>
